@@ -1,0 +1,50 @@
+package vault
+
+import (
+	"strings"
+
+	"github.com/go-chef/chef"
+)
+
+// List returns a list of vaults on the server
+//
+// Chef API Docs: https://docs.chef.io/api_chef_server/#get-24
+// Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_list.rb
+func (v *Service) List() (data *chef.DataBagListResult, err error) {
+	dbl, err := v.Client.DataBags.List()
+	if err != nil {
+		return
+	}
+
+	list := chef.DataBagListResult{}
+
+	for bag, url := range *dbl {
+		if v.bagIsVault(bag) {
+			list[bag] = url
+		}
+	}
+
+	return &list, nil
+}
+
+// ListItems gets a list of the items in a vault
+//
+//	Chef API Docs: https://docs.chef.io/api_chef_server/#get-25
+func (v *Service) ListItems(name string) (data *chef.DataBagListResult, err error) {
+	dbl, err := v.Client.DataBags.ListItems(name)
+	if err != nil {
+		return
+	}
+
+	items := chef.DataBagListResult{}
+
+	for item, url := range *dbl {
+		if strings.HasSuffix(item, "_keys") {
+			continue
+		} else {
+			items[item] = url
+		}
+	}
+
+	return &items, nil
+}

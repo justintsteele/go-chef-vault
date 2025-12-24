@@ -3,11 +3,25 @@ package integration
 // Test the go-chef/chef/ chef server api /chef-vault (databags) endpoints against a live server or goiardi
 
 import (
+	"fmt"
+
 	"github.com/justintsteele/go-chef-vault/vault"
 )
 
 func RunVault(cfg Config) error {
-	client := mustCreateClient(cfg)
+	if cfg.Target == TargetGoiardi {
+		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
+		defer func() {
+			cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardAdminUser)
+			client := cfg.mustCreateClient()
+			service := vault.NewService(client)
+			runStep("Delete User", func() (any, error) {
+				return deleteUser(service)
+			})
+		}()
+	}
+
+	client := cfg.mustCreateClient()
 	service := vault.NewService(client)
 
 	runStep("Create Vault", func() (any, error) {

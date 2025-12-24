@@ -2,7 +2,6 @@ package integration
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,53 +17,48 @@ const (
 )
 
 type Config struct {
-	Target Target
-	Init   bool
-
-	KnifeRb string
+	Target  Target
+	Keep    bool
 	WorkDir string
+	Knife   string
+	Admin   string
+	User    string
 }
 
 func LoadConfig() Config {
-	init := flag.Bool("init", false, "initialize goiardi")
-	target := flag.String("target", "goiardi", "goiardi or chefserver")
+	target := flag.String("target", "chefserver", "goiardi or chefserver")
 	knife := flag.String("knife", filepath.Join(os.Getenv("HOME"), ".chef"), "path to knife.rb (chefserver only)")
+	keep := flag.Bool("keep-workdir", false, "keep goiardi bootstrap workdir")
 
 	flag.Parse()
 
 	cfg := Config{
-		Init:    *init,
-		KnifeRb: *knife,
-		WorkDir: ".servertest",
+		WorkDir: filepath.Dir(*knife),
+		Keep:    *keep,
 	}
 
 	switch *target {
 	case "goiardi":
 		cfg.Target = TargetGoiardi
+		cfg.WorkDir = "servertest/.chef"
+		cfg.Admin = goiardAdminUser
+		cfg.User = goiardiUser
 	case "chefserver":
 		cfg.Target = TargetChefServer
 	default:
 		log.Fatalf("unknown target: %s", *target)
 	}
 
-	if cfg.Target == TargetChefServer && cfg.Init {
-		log.Fatal("--init is not valid for chefserver")
-	}
-
 	return cfg
 }
 
-func newClient(cfg *chef.Config) (*chef.Client, error) {
-	return chef.NewClient(cfg)
-}
-
-func loadKnifeConfig(knifeRb string) (*chef.Config, error) {
-	data, err := os.ReadFile(fmt.Sprintf("%s/knife.rb", knifeRb))
+func (c *Config) loadKnifeConfig() (*chef.Config, error) {
+	data, err := os.ReadFile(c.Knife)
 	if err != nil {
 		panic(err)
 	}
 
-	clientRb, err := chef.NewClientRb(string(data), knifeRb)
+	clientRb, err := chef.NewClientRb(string(data), c.WorkDir)
 	if err != nil {
 		panic(err)
 	}
@@ -76,8 +70,8 @@ func loadKnifeConfig(knifeRb string) (*chef.Config, error) {
 	}, nil
 }
 
-func mustCreateClient(cfg Config) *chef.Client {
-	knife, err := loadKnifeConfig(cfg.KnifeRb)
+func (c *Config) mustCreateClient() *chef.Client {
+	knife, err := c.loadKnifeConfig()
 	if err != nil {
 		panic(err)
 	}

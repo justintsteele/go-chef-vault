@@ -12,12 +12,14 @@ func RunVault(cfg Config) error {
 	if cfg.Target == TargetGoiardi {
 		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
 		defer func() {
-			cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardAdminUser)
-			client := cfg.mustCreateClient()
-			service := vault.NewService(client)
-			runStep("Delete User", func() (any, error) {
-				return deleteUser(service)
-			})
+			if !cfg.Keep {
+				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardAdminUser)
+				client := cfg.mustCreateClient()
+				service := vault.NewService(client)
+				runStep("Delete User", func() (any, error) {
+					return deleteUser(service)
+				})
+			}
 		}()
 	}
 

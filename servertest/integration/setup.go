@@ -37,8 +37,11 @@ func (c *Config) ensureWorkDir() error {
 }
 
 func (c *Config) ensureUserConfig(user string) error {
-	if err := generateRSAKeyPair(c.WorkDir, user); err != nil {
-		return err
+	_, err := os.Stat(fmt.Sprintf("%s/%s.pem", c.WorkDir, user))
+	if err != nil {
+		if err := generateRSAKeyPair(c.WorkDir, user); err != nil {
+			return err
+		}
 	}
 
 	content := fmt.Sprintf(`current_dir = File.dirname(__FILE__)

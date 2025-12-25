@@ -42,7 +42,12 @@ func (v *Service) Create(payload *VaultPayload) (result *CreateResponse, err err
 		return nil, err
 	}
 
-	keys, err := v.createKeysDataBag(payload, secret, "create")
+	keysModeState := &KeysModeState{
+		Current: payload.EffectiveKeysMode(),
+		Desired: payload.EffectiveKeysMode(),
+	}
+
+	keys, err := v.createKeysDataBag(payload, keysModeState, secret, "create")
 
 	if err != nil {
 		return nil, err

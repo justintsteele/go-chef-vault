@@ -13,26 +13,13 @@ type UpdateResponse struct {
 	KeysURIs []string            `json:"keys_uris"`
 }
 
-type UpdateDataResponse struct {
-	URI string `json:"uri"`
+type KeysModeState struct {
+	Current KeysMode `json:"current"`
+	Desired KeysMode `json:"desired"`
 }
 
-func (v *Service) loadKeysCurrentState(payload *VaultPayload) (*VaultItemKeys, error) {
-	baseKeys, err := v.Client.DataBags.GetItem(payload.VaultName, payload.VaultItemName+"_keys")
-	if err != nil {
-		return nil, err
-	}
-
-	baseKeysData, err := json.Marshal(baseKeys)
-	if err != nil {
-		return nil, err
-	}
-	var vik VaultItemKeys
-	if err := json.Unmarshal(baseKeysData, &vik); err != nil {
-		return nil, err
-	}
-
-	return &vik, nil
+type UpdateDataResponse struct {
+	URI string `json:"uri"`
 }
 
 // Update modifies a vault on the server
@@ -64,10 +51,14 @@ func (v *Service) Update(payload *VaultPayload) (result *UpdateResponse, err err
 		query = &joined
 	}
 
+	var keysModeState *KeysModeState
 	if payload.KeysMode != nil {
-		keyState.Mode = string(*payload.KeysMode)
+		keysModeState = &KeysModeState{Current: keyState.Mode, Desired: *payload.KeysMode}
+		keyState.Mode = *payload.KeysMode
+	} else {
+		keysModeState = &KeysModeState{Current: keyState.Mode, Desired: keyState.Mode}
 	}
-	mode := KeysMode(keyState.Mode)
+	mode := keyState.Mode
 
 	requestedData, err := v.GetItem(payload.VaultName, payload.VaultItemName)
 	if err != nil {
@@ -112,7 +103,7 @@ func (v *Service) Update(payload *VaultPayload) (result *UpdateResponse, err err
 		},
 	}
 
-	keys, err := v.createKeysDataBag(updatePayload, secret, "update")
+	keys, err := v.createKeysDataBag(updatePayload, keysModeState, secret, "update")
 
 	if err != nil {
 		return nil, err
@@ -132,4 +123,23 @@ func (v *Service) Update(payload *VaultPayload) (result *UpdateResponse, err err
 	result.Data = &UpdateDataResponse{URI: fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), payload.VaultItemName)}
 
 	return result, nil
+}
+
+// loadKeysCurrentState loads the current state of the base keys data bag item
+func (v *Service) loadKeysCurrentState(payload *VaultPayload) (*VaultItemKeys, error) {
+	baseKeys, err := v.Client.DataBags.GetItem(payload.VaultName, payload.VaultItemName+"_keys")
+	if err != nil {
+		return nil, err
+	}
+
+	baseKeysData, err := json.Marshal(baseKeys)
+	if err != nil {
+		return nil, err
+	}
+	var vik VaultItemKeys
+	if err := json.Unmarshal(baseKeysData, &vik); err != nil {
+		return nil, err
+	}
+
+	return &vik, nil
 }

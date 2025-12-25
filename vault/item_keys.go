@@ -2,8 +2,10 @@ package vault
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go-chef-vault/crypto"
+	"net/http"
 
 	"github.com/go-chef/chef"
 )
@@ -13,7 +15,7 @@ type VaultItemKeys struct {
 	Admins      []string          `json:"admins"`
 	Clients     []string          `json:"clients"`
 	SearchQuery []string          `json:"search_query"`
-	Mode        string            `json:"mode"`
+	Mode        KeysMode          `json:"mode"`
 	Keys        map[string]string `json:"-"`
 	encryptor   VaultItemKeyEncryptor
 }
@@ -51,7 +53,110 @@ func (k *VaultItemKeys) encryptKeys(actors map[string]chef.AccessKey, secret []b
 	return nil
 }
 
-func (v *Service) createKeysDataBag(payload *VaultPayload, secret []byte, action string) (*VaultItemKeysResult, error) {
+func (v *Service) buildDefaultKeys(payload *VaultPayload, keys *map[string]any, action string, out *VaultItemKeysResult) error {
+	switch action {
+	case "create":
+		if err := v.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
+			var chefErr *chef.ErrorResponse
+			if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+				if err := v.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+	case "update":
+		if err := v.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
+			return err
+		}
+	}
+	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), payload.VaultItemName+"_keys"))
+	return nil
+}
+
+func (v *Service) buildSparseKeys(payload *VaultPayload, keys map[string]any, action string, out *VaultItemKeysResult) error {
+	baseKeys := map[string]any{
+		"id":      keys["id"],
+		"admins":  keys["admins"],
+		"clients": keys["clients"],
+		"mode":    keys["mode"],
+	}
+
+	if sq, ok := keys["search_query"].([]string); ok && sq != nil {
+		baseKeys["search_query"] = sq
+	} else {
+		baseKeys["search_query"] = []string{}
+	}
+
+	switch action {
+	case "create":
+		if err := v.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
+			return err
+		}
+	case "update":
+		if err := v.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
+			return err
+		}
+	}
+	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), baseKeys["id"].(string)))
+
+	for k, val := range keys {
+		switch k {
+		case "id", "admins", "clients", "search_query", "mode":
+			continue
+		}
+		sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, k)
+		sparseItem := map[string]interface{}{
+			"id": sparseId,
+		}
+		sparseItem[k] = val
+		switch action {
+		case "create":
+			if err := v.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
+				return err
+			}
+		case "update":
+			if err := v.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
+				var chefErr *chef.ErrorResponse
+				if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+					if err := v.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+		}
+		out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), sparseId))
+	}
+	return nil
+}
+
+func (v *Service) cleanupCurrentKeys(payload *VaultPayload, keysModeState *KeysModeState, keys map[string]any) error {
+	switch keysModeState.Desired {
+	case KeysModeDefault:
+		// If Desired is "default", we need to clean up the sparse keys
+		for key, _ := range keys {
+			switch key {
+			case "id", "admins", "clients", "search_query", "mode":
+				continue
+			}
+			sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, key)
+			if err := v.Client.DataBags.DeleteItem(payload.VaultName, sparseId); err != nil {
+				return err
+			}
+		}
+	case KeysModeSparse:
+		// If Desired is "sparse", we need to clean up the base keys
+		if err := v.Client.DataBags.DeleteItem(payload.VaultName, payload.VaultItemName+"_keys"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (v *Service) createKeysDataBag(payload *VaultPayload, keysModeState *KeysModeState, secret []byte, action string) (*VaultItemKeysResult, error) {
 	mode := payload.EffectiveKeysMode()
 	keys, err := v.buildKeys(payload, secret)
 	result := &VaultItemKeysResult{}
@@ -60,74 +165,21 @@ func (v *Service) createKeysDataBag(payload *VaultPayload, secret []byte, action
 	}
 	keys["mode"] = &mode
 
+	if keysModeState.Current != keysModeState.Desired {
+		if err := v.cleanupCurrentKeys(payload, keysModeState, keys); err != nil {
+			return nil, err
+		}
+		action = "create"
+	}
+
 	switch mode {
 	case KeysModeDefault:
-		switch action {
-		case "create":
-			if kDbErr := v.Client.DataBags.CreateItem(payload.VaultName, &keys); kDbErr != nil {
-				return nil, kDbErr
-			}
-		case "update":
-			if kDbErr := v.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); kDbErr != nil {
-				return nil, kDbErr
-			}
+		if err := v.buildDefaultKeys(payload, &keys, action, result); err != nil {
+			return nil, err
 		}
-		result.URIs = append(result.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), payload.VaultItemName+"_keys"))
-
 	case KeysModeSparse:
-		baseKeys := map[string]any{
-			"id":      keys["id"],
-			"admins":  keys["admins"],
-			"clients": keys["clients"],
-			"mode":    keys["mode"],
-		}
-
-		if sq, ok := keys["search_query"].([]string); ok && sq != nil {
-			baseKeys["search_query"] = sq
-		} else {
-			baseKeys["search_query"] = []string{}
-		}
-
-		switch action {
-		case "create":
-			if kDbErr := v.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); kDbErr != nil {
-				return nil, kDbErr
-			}
-		case "update":
-			if kDbErr := v.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); kDbErr != nil {
-				return nil, kDbErr
-			}
-		}
-		result.URIs = append(result.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), baseKeys["id"].(string)))
-
-		for k, val := range keys {
-			switch k {
-			case "id", "admins", "clients", "search_query", "mode":
-				continue
-			}
-			sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, k)
-			sparseItem := map[string]interface{}{
-				"id": sparseId,
-			}
-			sparseItem[k] = val
-			switch action {
-			case "create":
-				if kDbErr := v.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); kDbErr != nil {
-					return nil, kDbErr
-				}
-			case "update":
-				_, err := v.Client.DataBags.GetItem(payload.VaultName, sparseId)
-				if err == nil {
-					if kDbErr := v.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); kDbErr != nil {
-						return nil, kDbErr
-					}
-				} else {
-					if kDbErr := v.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); kDbErr != nil {
-						return nil, kDbErr
-					}
-				}
-			}
-			result.URIs = append(result.URIs, fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), sparseId))
+		if err := v.buildSparseKeys(payload, keys, action, result); err != nil {
+			return nil, err
 		}
 	default:
 		return result, fmt.Errorf("unsupported key format: %s", mode)
@@ -225,7 +277,7 @@ func (k *VaultItemKeys) UnmarshalJSON(data []byte) error {
 		case "search_query":
 			k.SearchQuery = toStringSlice(val)
 		case "mode":
-			k.Mode = val.(string)
+			k.Mode = KeysMode(val.(string))
 		default:
 			if s, ok := val.(string); ok {
 				k.Keys[key] = s

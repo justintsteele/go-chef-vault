@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-chef-vault/crypto"
-	"strings"
 )
 
 type UpdateResponse struct {
@@ -42,13 +41,13 @@ func (v *Service) Update(payload *VaultPayload) (result *UpdateResponse, err err
 			keyState.Clients = mergeClients(keyState.Clients, payload.Clients)
 		}
 	}
-	if payload.SearchQuery != nil {
-		keyState.SearchQuery = []string{*payload.SearchQuery}
-	}
+
 	var query *string
-	if len(keyState.SearchQuery) > 0 {
-		joined := strings.Join(keyState.SearchQuery, " ")
-		query = &joined
+	switch q := effectiveSearchQuery(payload.SearchQuery).(type) {
+	case string:
+		query = &q
+	default:
+		query = nil
 	}
 
 	var keysModeState *KeysModeState

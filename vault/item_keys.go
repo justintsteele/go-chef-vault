@@ -14,7 +14,7 @@ type VaultItemKeys struct {
 	Id          string            `json:"id"`
 	Admins      []string          `json:"admins"`
 	Clients     []string          `json:"clients"`
-	SearchQuery []string          `json:"search_query"`
+	SearchQuery interface{}       `json:"search_query"`
 	Mode        KeysMode          `json:"mode"`
 	Keys        map[string]string `json:"-"`
 	encryptor   VaultItemKeyEncryptor
@@ -209,12 +209,9 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 		actors[client] = key
 	}
 
-	var searchQueries []string
 	var searchedClients []string
 
 	if payload.SearchQuery != nil {
-		searchQueries = []string{*payload.SearchQuery}
-
 		var err error
 		searchedClients, err = v.getClientsFromSearch(payload)
 		if err != nil {
@@ -236,7 +233,7 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 		Id:          payload.VaultItemName + "_keys",
 		Admins:      payload.Admins,
 		Clients:     finalClients,
-		SearchQuery: searchQueries,
+		SearchQuery: effectiveSearchQuery(payload.SearchQuery),
 		Keys:        make(map[string]string),
 	}
 
@@ -256,6 +253,14 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 	}
 
 	return keysItem, nil
+}
+
+// effectiveSearchQuery mimics behavior of ChefVault::ItemKeys initializer for search_query
+func effectiveSearchQuery(q *string) interface{} {
+	if q == nil {
+		return []string{}
+	}
+	return *q
 }
 
 // UnmarshalJSON overlay for VaultItemKeys that types the response from the *_keys data bag

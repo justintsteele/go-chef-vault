@@ -3,46 +3,22 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"testing"
-
-	"github.com/go-chef/chef"
 )
 
 func TestVaultsService_Update(t *testing.T) {
 	setup()
 	defer teardown()
 
-	orig := defaultVaultItemKeyEncrypt
-	defaultVaultItemKeyEncrypt = func(_ *VaultItemKeys, _ map[string]chef.AccessKey, _ []byte, out map[string]string) error {
-		out["tester"] = "ENCRYPTED RSA KEY"
-		return nil
-	}
-	defer func() {
-		defaultVaultItemKeyEncrypt = orig
-	}()
+	cleanupDecrypt := stubVaultItemKeyDecrypt(t)
+	defer cleanupDecrypt()
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/data":
-			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1"}`)
-		case "/data/vault1":
-			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1/secret"}`)
-		case "/users/tester/keys/default":
-			fmt.Fprintf(w, `{
-             			        "name": "default",
-								"public_key": "RSA KEY",
-								"expiration_date": "infinity"
-                         	}`)
-		case "/clients/testhost/keys/default":
-			fmt.Fprintf(w, `{
-             			        "name": "testhost",
-								"public_key": "RSA KEY",
-								"expiration_date": "infinity"
-                         	}`)
-		}
-	})
+	cleanupEncrypt := stubVaultItemKeyEncrypt(t)
+	defer cleanupEncrypt()
+
+	stubMuxGetItem(t)
+	stubMuxCreate(t)
 
 	var raw map[string]interface{}
 	vaultItem := `{"baz": "baz-value-1", "fuz": "fuz-value-2"}`

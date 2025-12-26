@@ -15,7 +15,7 @@ type keyPair struct {
 
 const (
 	userid     = "tester"
-	requestURL = "http://localhost:80"
+	requestURL = "http://testhost:80"
 
 	// Generated from
 	// openssl genrsa -out privkey.pem 2048

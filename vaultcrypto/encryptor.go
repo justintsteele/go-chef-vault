@@ -1,4 +1,4 @@
-package crypto
+package vaultcrypto
 
 import (
 	"crypto/rand"

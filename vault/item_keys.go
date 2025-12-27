@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-chef-vault/crypto"
+	"go-chef-vault/vaultcrypto"
 	"net/http"
 
 	"github.com/go-chef/chef"
@@ -51,7 +51,7 @@ func (k *VaultItemKeys) encrypt(actors map[string]chef.AccessKey, secret []byte,
 // encryptKeys encrypts the public key of each actor in the vault
 func (k *VaultItemKeys) encryptKeys(actors map[string]chef.AccessKey, secret []byte, out map[string]string) error {
 	for actor, key := range actors {
-		sharedSecret, err := crypto.EncryptSharedSecret(key.PublicKey, secret)
+		sharedSecret, err := vaultcrypto.EncryptSharedSecret(key.PublicKey, secret)
 		if err != nil {
 			return err
 		}

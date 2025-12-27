@@ -2,7 +2,7 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/crypto"
+	"go-chef-vault/vaultcrypto"
 )
 
 type UpdateResponse struct {
@@ -52,7 +52,7 @@ func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
 		Clients:       keyState.Clients,
 	}
 
-	secret, err := crypto.GenSecret(32)
+	secret, err := vaultcrypto.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}

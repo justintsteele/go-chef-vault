@@ -2,7 +2,7 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/crypto"
+	"go-chef-vault/vaultcrypto"
 
 	"github.com/go-chef/chef"
 )
@@ -37,7 +37,7 @@ func (v *Service) Create(payload *VaultPayload) (result *CreateResponse, err err
 		},
 	}
 
-	secret, err := crypto.GenSecret(32)
+	secret, err := vaultcrypto.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}

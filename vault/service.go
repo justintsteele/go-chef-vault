@@ -23,13 +23,6 @@ type VaultResponse struct {
 	URI string `json:"uri"`
 }
 
-type KeysMode string
-
-const (
-	KeysModeDefault KeysMode = "default"
-	KeysModeSparse  KeysMode = "sparse"
-)
-
 type VaultPayload struct {
 	VaultName     string
 	VaultItemName string
@@ -39,13 +32,6 @@ type VaultPayload struct {
 	Admins        []string
 	Clients       []string
 	Clean         bool
-}
-
-func (p *VaultPayload) EffectiveKeysMode() KeysMode {
-	if p.KeysMode == nil {
-		return KeysModeDefault
-	}
-	return *p.KeysMode
 }
 
 // NewService is a constructor for Service. This is used by other vault service methods to authorize access to a vault item.

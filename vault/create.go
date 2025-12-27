@@ -43,8 +43,8 @@ func (v *Service) Create(payload *VaultPayload) (result *CreateResponse, err err
 	}
 
 	keysModeState := &KeysModeState{
-		Current: payload.EffectiveKeysMode(),
-		Desired: payload.EffectiveKeysMode(),
+		Current: payload.effectiveKeysMode(),
+		Desired: payload.effectiveKeysMode(),
 	}
 
 	keys, err := v.createKeysDataBag(payload, keysModeState, secret, "create")

@@ -10,6 +10,13 @@ import (
 	"github.com/go-chef/chef"
 )
 
+const (
+	KeysModeDefault KeysMode = "default"
+	KeysModeSparse  KeysMode = "sparse"
+)
+
+type KeysMode string
+
 type VaultItemKeys struct {
 	Id          string            `json:"id"`
 	Admins      []string          `json:"admins"`
@@ -83,12 +90,6 @@ func (v *Service) buildSparseKeys(payload *VaultPayload, keys map[string]any, ac
 		"mode":    keys["mode"],
 	}
 
-	if sq, ok := keys["search_query"].([]string); ok && sq != nil {
-		baseKeys["search_query"] = sq
-	} else {
-		baseKeys["search_query"] = []string{}
-	}
-
 	switch action {
 	case "create":
 		if err := v.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
@@ -156,8 +157,43 @@ func (v *Service) cleanupCurrentKeys(payload *VaultPayload, keysModeState *KeysM
 	return nil
 }
 
+func (v *Service) loadKeysCurrentState(payload *VaultPayload) (*VaultItemKeys, error) {
+
+	raw, err := v.Client.DataBags.GetItem(payload.VaultName, payload.VaultItemName+"_keys")
+	if err != nil {
+		return nil, err
+	}
+
+	dim, err := dataBagItemMap(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	vik := &VaultItemKeys{
+		SearchQuery: dim["search_query"], // preserved as string OR []
+	}
+
+	if id, ok := dim["id"].(string); ok {
+		vik.Id = id
+	}
+
+	if admins, ok := dim["admins"]; ok {
+		vik.Admins = toStringSlice(admins)
+	}
+
+	if clients, ok := dim["clients"]; ok {
+		vik.Clients = toStringSlice(clients)
+	}
+
+	if mode, ok := dim["mode"].(string); ok {
+		vik.Mode = KeysMode(mode)
+	}
+
+	return vik, nil
+}
+
 func (v *Service) createKeysDataBag(payload *VaultPayload, keysModeState *KeysModeState, secret []byte, action string) (*VaultItemKeysResult, error) {
-	mode := payload.EffectiveKeysMode()
+	mode := payload.effectiveKeysMode()
 	keys, err := v.buildKeys(payload, secret)
 	result := &VaultItemKeysResult{}
 	if err != nil {
@@ -255,12 +291,87 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 	return keysItem, nil
 }
 
+// effectiveKeysMode allows the payload to not contain a KeysMode and still enact the default
+func (p *VaultPayload) effectiveKeysMode() KeysMode {
+	if p.KeysMode == nil {
+		return KeysModeDefault
+	}
+	return *p.KeysMode
+}
+
 // effectiveSearchQuery mimics behavior of ChefVault::ItemKeys initializer for search_query
 func effectiveSearchQuery(q *string) interface{} {
 	if q == nil {
 		return []string{}
 	}
 	return *q
+}
+
+// resolveSearchQuery accounts for the behavior in Chef-Vault where if a search_query is not provided, it stores it as an empty array, all others are stored as a string
+func resolveSearchQuery(keyState interface{}, request *string) *string {
+	if request != nil {
+		return request
+	}
+
+	if ks, ok := keyState.(string); ok {
+		return &ks
+	}
+
+	return nil
+}
+
+func resolveKeysMode(current KeysMode, payload *VaultPayload) (KeysMode, *KeysModeState) {
+	if payload.KeysMode == nil {
+		return current, &KeysModeState{
+			Current: current,
+			Desired: current,
+		}
+	}
+
+	return *payload.KeysMode, &KeysModeState{
+		Current: current,
+		Desired: *payload.KeysMode,
+	}
+}
+
+func mergeKeyActors(state *VaultItemKeys, payload *VaultPayload) {
+	if payload.Admins != nil {
+		state.Admins = mergeClients(state.Admins, payload.Admins)
+	}
+
+	if payload.Clean {
+		state.Clients = nil
+	}
+
+	if payload.Clients != nil {
+		if payload.Clean {
+			state.Clients = payload.Clients
+		} else {
+			state.Clients = mergeClients(state.Clients, payload.Clients)
+		}
+	}
+}
+
+func resolveUpdateContent(v *Service, payload *VaultPayload) (map[string]any, error) {
+	current, err := v.GetItem(payload.VaultName, payload.VaultItemName)
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Content == nil {
+		return dataBagItemMap(current)
+	}
+
+	merged := make(map[string]any)
+	for k, v := range payload.Content {
+		b, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		merged[k] = b
+	}
+
+	return dataBagItemMap(merged)
 }
 
 // UnmarshalJSON overlay for VaultItemKeys that types the response from the *_keys data bag

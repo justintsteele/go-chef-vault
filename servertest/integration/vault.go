@@ -16,6 +16,15 @@ func RunVault(cfg Config) error {
 				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardAdminUser)
 				client := cfg.mustCreateClient()
 				service := vault.NewService(client)
+
+				runStep("Delete Items", func() (any, error) {
+					return deleteItem(service)
+				})
+
+				runStep("Delete Vault", func() (any, error) {
+					return deleteVault(service)
+				})
+
 				runStep("Delete User", func() (any, error) {
 					return deleteUser(service)
 				})
@@ -42,20 +51,16 @@ func RunVault(cfg Config) error {
 		return getVault(service)
 	})
 
+	runStep("Get Item Keys", func() (any, error) {
+		return getKeys(service)
+	})
+
 	runStep("List Items", func() (any, error) {
 		return listItems(service)
 	})
 
 	runStep("List Vaults", func() (any, error) {
 		return list(service)
-	})
-
-	runStep("Delete Items", func() (any, error) {
-		return deleteItem(service)
-	})
-
-	runStep("Delete Vault", func() (any, error) {
-		return deleteVault(service)
 	})
 
 	return nil

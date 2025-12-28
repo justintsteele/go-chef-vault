@@ -9,7 +9,7 @@ import (
 )
 
 // mergeClients merges a payload client list and any clients returned from a search ensuring there are no duplicates
-func mergeClients(a, b []string) []string {
+func mergeClients(a []string, b []string) []string {
 	seen := make(map[string]struct{})
 
 	for _, c := range a {
@@ -26,6 +26,15 @@ func mergeClients(a, b []string) []string {
 
 	sort.Strings(out) // optional but nice
 	return out
+}
+
+// mapKeys returns a slice of the keys of a map
+func mapKeys[K comparable, V any](m map[K]V) []K {
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // Ensures base64 strings do not have extraneous characters in them

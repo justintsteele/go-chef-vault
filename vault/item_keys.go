@@ -223,47 +223,35 @@ func (v *Service) createKeysDataBag(payload *VaultPayload, keysModeState *KeysMo
 	return result, nil
 }
 
-// buildKeys collects the public keys for all actors involved in the vault and encrypts them
+// buildKeys collects actor public keys and builds the encrypted vault keys item
 func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]any, error) {
-	actors := make(map[string]chef.AccessKey)
+	admins := make(map[string]chef.AccessKey)
+	clients := make(map[string]chef.AccessKey)
 
-	// admins
+	// Admins are required
 	for _, admin := range payload.Admins {
 		key, err := v.Client.Users.GetKey(admin, "default")
 		if err != nil {
-			return nil, fmt.Errorf("fetch user %s failed: %w", admin, err)
+			return nil, fmt.Errorf("fetch admin %q failed: %w", admin, err)
 		}
-		actors[admin] = key
+		admins[admin] = key
 	}
 
-	// explicit clients
-	for _, client := range payload.Clients {
-		key, err := v.Client.Clients.GetKey(client, "default")
-		if err != nil {
-			return nil, fmt.Errorf("fetch client %s failed: %w", client, err)
-		}
-		actors[client] = key
-	}
+	// Explicit clients
+	v.collectClients(payload.Clients, clients)
 
+	// Clients from search
 	var searchedClients []string
-
 	if payload.SearchQuery != nil {
 		var err error
 		searchedClients, err = v.getClientsFromSearch(payload)
 		if err != nil {
 			return nil, err
 		}
-
-		for _, client := range searchedClients {
-			key, err := v.Client.Clients.GetKey(client, "default")
-			if err != nil {
-				return nil, fmt.Errorf("fetch client %s failed: %w", client, err)
-			}
-			actors[client] = key
-		}
+		v.collectClients(searchedClients, clients)
 	}
 
-	finalClients := mergeClients(payload.Clients, searchedClients)
+	finalClients := mergeClients(mapKeys(clients), searchedClients)
 
 	vik := &VaultItemKeys{
 		Id:          payload.VaultItemName + "_keys",
@@ -273,11 +261,37 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 		Keys:        make(map[string]string),
 	}
 
+	// produce a list of all actors we need to encrypt
+	actors := make(map[string]chef.AccessKey, len(admins)+len(clients))
+	for k, v := range admins {
+		actors[k] = v
+	}
+	for k, v := range clients {
+		actors[k] = v
+	}
+
 	if err := vik.encrypt(actors, secret, vik.Keys); err != nil {
 		return nil, err
 	}
 
-	keysItem := map[string]any{
+	return buildKeysItem(vik), nil
+}
+
+// collectClients collects the public keys for the given clients
+func (v *Service) collectClients(names []string, clients map[string]chef.AccessKey) {
+	for _, name := range names {
+		key, err := v.Client.Clients.GetKey(name, "default")
+		if err != nil {
+			fmt.Printf("client %q has no public key, skipping: %v\n", name, err)
+			continue
+		}
+		clients[name] = key
+	}
+}
+
+// buildKeysItem produces the map that will be used to create the keys data bag item
+func buildKeysItem(vik *VaultItemKeys) map[string]any {
+	item := map[string]any{
 		"id":           vik.Id,
 		"admins":       vik.Admins,
 		"clients":      vik.Clients,
@@ -285,10 +299,10 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 	}
 
 	for actor, cipher := range vik.Keys {
-		keysItem[actor] = cipher
+		item[actor] = cipher
 	}
 
-	return keysItem, nil
+	return item
 }
 
 // effectiveKeysMode allows the payload to not contain a KeysMode and still enact the default
@@ -320,6 +334,7 @@ func resolveSearchQuery(keyState interface{}, request *string) *string {
 	return nil
 }
 
+// resolveKeysMode resolves the desired keys mode from the payload and the current mode
 func resolveKeysMode(current KeysMode, payload *VaultPayload) (KeysMode, *KeysModeState) {
 	if payload.KeysMode == nil {
 		return current, &KeysModeState{
@@ -334,6 +349,7 @@ func resolveKeysMode(current KeysMode, payload *VaultPayload) (KeysMode, *KeysMo
 	}
 }
 
+// mergeKeyActors merges the actors from the payload into the state, respecting the clean flag
 func mergeKeyActors(state *VaultItemKeys, payload *VaultPayload) {
 	if payload.Admins != nil {
 		state.Admins = mergeClients(state.Admins, payload.Admins)
@@ -352,6 +368,7 @@ func mergeKeyActors(state *VaultItemKeys, payload *VaultPayload) {
 	}
 }
 
+// resolveUpdateContent merges the payload content with the current content, respecting the clean flag
 func resolveUpdateContent(v *Service, payload *VaultPayload) (map[string]any, error) {
 	current, err := v.GetItem(payload.VaultName, payload.VaultItemName)
 	if err != nil {

@@ -2,7 +2,6 @@ package integration
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/justintsteele/go-chef-vault/vault"
 )
@@ -30,10 +29,7 @@ func createVault(service *vault.Service) (res *vault.CreateResponse, err error) 
 		Clients:       []string{},
 	}
 
-	res, err = service.Create(pl)
-	if err != nil {
-		fmt.Printf("Vault %s/%s already exists\n", vaultName, vaultItemName)
-	}
+	res, _ = service.Create(pl)
 
 	return
 }

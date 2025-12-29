@@ -13,7 +13,7 @@ func RunVault(cfg Config) error {
 		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
 		defer func() {
 			if !cfg.Keep {
-				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardAdminUser)
+				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiAdminUser)
 				client := cfg.mustCreateClient()
 				service := vault.NewService(client)
 

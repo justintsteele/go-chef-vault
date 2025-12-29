@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-chef/chef"
 )
@@ -19,6 +20,7 @@ const (
 type Config struct {
 	Target  Target
 	Keep    bool
+	State   string
 	WorkDir string
 	Knife   string
 	Admin   string
@@ -26,30 +28,60 @@ type Config struct {
 }
 
 func LoadConfig() Config {
-	target := flag.String("target", "chefserver", "goiardi or chefserver")
-	knife := flag.String("knife", filepath.Join(os.Getenv("HOME"), ".chef"), "path to knife.rb (chefserver only)")
-	keep := flag.Bool("keep-workdir", false, "keep goiardi bootstrap workdir")
+	target := flag.String("target", "goiardi", "goiardi or chefserver")
+	knife := flag.String("knife", filepath.Join(os.Getenv("HOME"), ".chef", "knife.rb"), "path to knife.rb")
+	keep := flag.Bool("keep-workdir", false, "keep goiardi integration workdir")
 
 	flag.Parse()
 
-	cfg := Config{
-		WorkDir: filepath.Dir(*knife),
-		Keep:    *keep,
-	}
-
 	switch *target {
 	case "goiardi":
-		cfg.Target = TargetGoiardi
-		cfg.WorkDir = "servertest/.chef"
-		cfg.Admin = goiardAdminUser
-		cfg.User = goiardiUser
+		var workDir string
+		statePath := filepath.Join(os.TempDir(), goiardiStateFile)
+
+		if data, err := os.ReadFile(statePath); err == nil {
+			workDir = strings.TrimSpace(string(data))
+		} else {
+			workDir, err = os.MkdirTemp("", "goiardi-servertest-")
+			if err != nil {
+				log.Fatalf("unable to create workdir: %v", err)
+			}
+		}
+
+		return Config{
+			Target:  TargetGoiardi,
+			State:   filepath.Join(os.TempDir(), goiardiStateFile),
+			WorkDir: workDir,
+			Keep:    *keep,
+		}
 	case "chefserver":
-		cfg.Target = TargetChefServer
+		knifePath, err := filepath.Abs(*knife)
+		if err != nil {
+			log.Fatalf("unable to determine absolute path to knife.rb")
+		}
+
+		knifeRb, err := os.Stat(knifePath)
+		if err != nil {
+			log.Fatalf("cannot access --knife file %s: %v", knifePath, err)
+		}
+
+		if knifeRb.IsDir() {
+			log.Fatalf("--knife must point to a file, got directory: %s", knifePath)
+		}
+
+		if !*keep {
+			log.Printf("WARNING: --keep-workdir ignored for chefserver target (cleanup disabled)")
+		}
+
+		return Config{
+			Target: TargetChefServer,
+			Knife:  knifePath,
+			Keep:   true,
+		}
 	default:
 		log.Fatalf("unknown target: %s", *target)
 	}
-
-	return cfg
+	return Config{}
 }
 
 func (c *Config) loadKnifeConfig() (*chef.Config, error) {

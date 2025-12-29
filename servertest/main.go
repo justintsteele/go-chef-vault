@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 	"servertest/integration"
 )
 
@@ -11,7 +10,7 @@ func main() {
 
 	defer func() {
 		if !cfg.Keep {
-			if err := os.RemoveAll(cfg.WorkDir); err != nil {
+			if err := cfg.DestroySandbox(); err != nil {
 				log.Printf("warning: failed to clean workdir: %v", err)
 			}
 		}

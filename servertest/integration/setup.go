@@ -16,23 +16,22 @@ import (
 )
 
 const (
+	goiardiStateFile = ".goiardi-servertest.state"
 	goiardiServerURL = "http://localhost:4545"
-	goiardAdminUser  = "admin"
+	goiardiAdminUser = "admin"
 	goiardiUser      = "rloggia"
 )
 
-func RunGoiardiInit(cfg Config) error {
-	Must(cfg.ensureWorkDir())
-	Must(cfg.ensureUserConfig(goiardAdminUser))
-	Must(cfg.ensureUserConfig(goiardiUser))
-	Must(cfg.createChefUser())
-	return nil
+var requiredFiles = []string{
+	goiardiAdminUser + ".rb",
+	goiardiAdminUser + ".pem",
+	goiardiUser + ".rb",
+	goiardiUser + ".pem",
 }
 
-func (c *Config) ensureWorkDir() error {
-	if _, err := os.Stat(c.WorkDir); os.IsNotExist(err) {
-		return os.MkdirAll(c.WorkDir, 0755)
-	}
+func RunGoiardiInit(cfg Config) error {
+	Must(cfg.PrepareSandbox())
+	Must(cfg.createChefUser())
 	return nil
 }
 
@@ -55,8 +54,8 @@ knife[:vault_mode] = "client"`,
 		goiardiServerURL,
 	)
 	// Ensure parent dir exists
-	if err := os.MkdirAll(filepath.Dir(c.WorkDir), 0700); err != nil {
-		return fmt.Errorf("create WorkDir dir: %w", err)
+	if err := os.MkdirAll(c.WorkDir, 0700); err != nil {
+		return err
 	}
 
 	if err := os.WriteFile(fmt.Sprintf("%s/%s.rb", c.WorkDir, user), []byte(content), 0600); err != nil {
@@ -67,7 +66,7 @@ knife[:vault_mode] = "client"`,
 }
 
 func (c *Config) createChefUser() error {
-	c.Knife = fmt.Sprintf("%s/%s.rb", c.WorkDir, goiardAdminUser)
+	c.Knife = fmt.Sprintf("%s/%s.rb", c.WorkDir, goiardiAdminUser)
 	client := c.mustCreateClient()
 	_, err := client.Users.Get(goiardiUser)
 	if err == nil {
@@ -85,6 +84,86 @@ func (c *Config) createChefUser() error {
 		"public_key": string(pubKey),
 	}
 	if err := createUser(user, client, &chef.UserResult{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Config) PrepareSandbox() error {
+	if c.Target != TargetGoiardi {
+		return nil
+	}
+
+	if c.isSandboxBootstrapped() {
+		if err := c.validateSandbox(); err != nil {
+			return fmt.Errorf(
+				"existing sandbox invalid (%v); delete %s and re-run",
+				err,
+				c.State,
+			)
+		}
+		return nil
+	}
+
+	Must(c.bootstrapSandbox())
+	return nil
+}
+
+func (c *Config) isSandboxBootstrapped() bool {
+	if _, err := os.Stat(c.State); err == nil {
+		return true
+	}
+	return false
+}
+
+func (c *Config) bootstrapSandbox() error {
+	if err := os.MkdirAll(c.WorkDir, 0700); err != nil {
+		return err
+	}
+
+	Must(c.ensureUserConfig(goiardiAdminUser))
+	Must(c.ensureUserConfig(goiardiUser))
+
+	return os.WriteFile(
+		c.State,
+		[]byte(c.WorkDir),
+		0600,
+	)
+}
+
+func (c *Config) validateSandbox() error {
+	for _, rel := range requiredFiles {
+		reqFile := filepath.Join(c.WorkDir, rel)
+		info, err := os.Stat(reqFile)
+		if err != nil {
+			return fmt.Errorf("missing %s", rel)
+		}
+		if info.IsDir() {
+			return fmt.Errorf("expected file, found directory: %s", rel)
+		}
+	}
+	return nil
+}
+
+func (c *Config) DestroySandbox() error {
+	entries, err := os.ReadDir(c.WorkDir)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range entries {
+		file := filepath.Join(c.WorkDir, e.Name())
+		if err := os.RemoveAll(file); err != nil {
+			return err
+		}
+	}
+
+	if err := os.RemoveAll(c.WorkDir); err != nil {
+		return err
+	}
+
+	if err := os.Remove(c.State); err != nil {
 		return err
 	}
 

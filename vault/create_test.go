@@ -8,13 +8,7 @@ import (
 )
 
 func TestVaultsService_Create(t *testing.T) {
-	setup()
-	defer teardown()
-
-	cleanupEncrypt := stubVaultItemKeyEncrypt(t)
-	defer cleanupEncrypt()
-
-	stubMuxCreate(t)
+	setupStubs(t)
 
 	var raw map[string]interface{}
 	vaultItem := `{"baz": "baz-value-1", "fuz": "fuz-value-2"}`

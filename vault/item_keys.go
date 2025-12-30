@@ -229,12 +229,10 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 	clients := make(map[string]chef.AccessKey)
 
 	// Admins are required
-	for _, admin := range payload.Admins {
-		key, err := v.Client.Users.GetKey(admin, "default")
-		if err != nil {
-			return nil, fmt.Errorf("fetch admin %q failed: %w", admin, err)
-		}
-		admins[admin] = key
+	v.collectAdmins(payload.Admins, admins)
+
+	if len(admins) == 0 {
+		return nil, fmt.Errorf("none of the specified admins have public keys")
 	}
 
 	// Explicit clients
@@ -251,7 +249,7 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 		v.collectClients(searchedClients, clients)
 	}
 
-	finalClients := mergeClients(mapKeys(clients), searchedClients)
+	finalClients := mapKeys(clients)
 
 	vik := &VaultItemKeys{
 		Id:          payload.VaultItemName + "_keys",
@@ -275,6 +273,18 @@ func (v *Service) buildKeys(payload *VaultPayload, secret []byte) (map[string]an
 	}
 
 	return buildKeysItem(vik), nil
+}
+
+// collectAdmins collects the public keys for the given admins
+func (v *Service) collectAdmins(names []string, admins map[string]chef.AccessKey) {
+	for _, name := range names {
+		key, err := v.Client.Users.GetKey(name, "default")
+		if err != nil {
+			fmt.Printf("admin %q has no public key, skipping: %v\n", name, err)
+			continue
+		}
+		admins[name] = key
+	}
 }
 
 // collectClients collects the public keys for the given clients

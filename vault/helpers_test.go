@@ -8,11 +8,30 @@ import (
 	"github.com/go-chef/chef"
 )
 
+func setupStubs(t *testing.T) {
+	t.Helper()
+
+	setup()
+
+	t.Cleanup(teardown)
+
+	cleanupDecrypt := stubVaultItemKeyDecrypt(t)
+	t.Cleanup(cleanupDecrypt)
+
+	cleanupEncrypt := stubVaultItemKeyEncrypt(t)
+	t.Cleanup(cleanupEncrypt)
+
+	stubMuxGetItem(t)
+	stubMuxCreate(t)
+}
+
 func stubVaultItemKeyEncrypt(t *testing.T) func() {
 	t.Helper()
 	orig := defaultVaultItemKeyEncrypt
-	defaultVaultItemKeyEncrypt = func(_ *VaultItemKeys, _ map[string]chef.AccessKey, _ []byte, out map[string]string) error {
-		out["tester"] = "ENCRYPTED RSA KEY"
+	defaultVaultItemKeyEncrypt = func(_ *VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
+		for actor, key := range actors {
+			out[actor] = fmt.Sprintf("ENCRYPTED %s", key.PublicKey)
+		}
 		return nil
 	}
 	// return teardown
@@ -52,9 +71,9 @@ func stubMuxCreate(t *testing.T) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/data":
-			fmt.Fprintf(w, `{"uri": "http://testhost/data/vault1"}`)
+			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1"}`)
 		case "/data/vault1":
-			fmt.Fprintf(w, `{"uri": "http://testhost/data/vault1/secret1"}`)
+			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1/secret1"}`)
 		case "/users/tester/keys/default":
 			fmt.Fprintf(w, `{
              			        "name": "default",
@@ -73,6 +92,37 @@ func stubMuxCreate(t *testing.T) {
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
+		case "/clients/testhost3/keys/default":
+			fmt.Fprintf(w, `{
+             			        "name": "testhost3",
+								"public_key": "RSA KEY",
+								"expiration_date": "infinity"
+                         	}`)
+		case "/clients/testhost4/keys/default":
+			fmt.Fprintf(w, `{
+             			        "name": "testhost4",
+								"public_key": "RSA KEY",
+								"expiration_date": "infinity"
+                         	}`)
+		case "/search/node":
+			fmt.Fprintf(w, `{
+								"total": 3,
+								"start": 0,
+								"rows": [
+									{
+										"url": "http://localhost/nodes/testhost",
+										"data": { "name": "testhost" }
+									},
+									{
+										"url": "http://localhost/nodes/testhost3",
+										"data": { "name": "testhost3" }
+									},
+									{
+										"url": "http://localhost/nodes/testhost4",
+										"data": { "name": "testhost4" }
+									}
+								]
+							}`)
 		}
 	})
 }
@@ -107,7 +157,7 @@ func stubMuxGetItem(t *testing.T) {
 			"id": "secret1_keys",
 			"admins": ["pivotal", "tester"],
 			"clients": ["testhost"],
-			"search_query": [],
+			"search_query": "name:testhost*",
 			"mode": "default",
 			"pivotal": "pivotal-private-key-b64\n",
 			"testhost": "testhost-private-key-b64\n",

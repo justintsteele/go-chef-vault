@@ -32,6 +32,7 @@ type VaultPayload struct {
 	Admins        []string
 	Clients       []string
 	Clean         bool
+	SkipReencrypt bool
 }
 
 // NewService is a constructor for Service. This is used by other vault service methods to authorize access to a vault item.

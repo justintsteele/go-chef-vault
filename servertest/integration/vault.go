@@ -63,6 +63,10 @@ func RunVault(cfg Config) error {
 		return list(service)
 	})
 
+	runStep("Refresh Vaults", func() (any, error) {
+		return refresh(service)
+	})
+
 	return nil
 }
 

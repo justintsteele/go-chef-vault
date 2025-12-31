@@ -389,16 +389,11 @@ func resolveUpdateContent(v *Service, payload *VaultPayload) (map[string]any, er
 		return dataBagItemMap(current)
 	}
 
-	merged := make(map[string]any)
+	merged := make(map[string]any, len(payload.Content))
 	for k, v := range payload.Content {
-		b, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-		merged[k] = b
+		merged[k] = v
 	}
-
-	return dataBagItemMap(merged)
+	return merged, nil
 }
 
 // UnmarshalJSON overlay for VaultItemKeys that types the response from the *_keys data bag

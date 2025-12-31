@@ -52,12 +52,33 @@ func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
 		Clients:       keyState.Clients,
 	}
 
+	keysResult, err := v.updateVault(updatePayload, modeState)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpdateResponse{
+		VaultResponse: VaultResponse{
+			URI: v.vaultURL(updatePayload.VaultName),
+		},
+		Data: &UpdateDataResponse{
+			URI: fmt.Sprintf(
+				"%s/%s",
+				v.vaultURL(updatePayload.VaultName),
+				updatePayload.VaultItemName,
+			),
+		},
+		KeysURIs: keysResult.URIs,
+	}, nil
+}
+
+func (v *Service) updateVault(payload *VaultPayload, modeState *KeysModeState) (*VaultItemKeysResult, error) {
 	secret, err := vaultcrypto.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}
 
-	keysResult, err := v.createKeysDataBag(updatePayload, modeState, secret, "update")
+	keysResult, err := v.createKeysDataBag(payload, modeState, secret, "update")
 	if err != nil {
 		return nil, err
 	}
@@ -75,17 +96,5 @@ func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
 		return nil, err
 	}
 
-	return &UpdateResponse{
-		VaultResponse: VaultResponse{
-			URI: v.vaultURL(payload.VaultName),
-		},
-		Data: &UpdateDataResponse{
-			URI: fmt.Sprintf(
-				"%s/%s",
-				v.vaultURL(payload.VaultName),
-				payload.VaultItemName,
-			),
-		},
-		KeysURIs: keysResult.URIs,
-	}, nil
+	return keysResult, nil
 }

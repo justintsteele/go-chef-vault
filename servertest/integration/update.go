@@ -14,6 +14,7 @@ func updateContent(service *vault.Service) (result *vault.UpdateResponse, err er
 		return
 	}
 
+	query := "name:testhost*"
 	var admins []string
 	admins = append(admins, service.Client.Auth.ClientName)
 
@@ -22,7 +23,7 @@ func updateContent(service *vault.Service) (result *vault.UpdateResponse, err er
 		VaultItemName: vaultItemName,
 		Content:       raw,
 		KeysMode:      nil,
-		SearchQuery:   nil,
+		SearchQuery:   &query,
 		Admins:        admins,
 		Clients:       []string{},
 	}

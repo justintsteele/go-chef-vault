@@ -8,18 +8,25 @@ import (
 	"github.com/go-chef/chef"
 )
 
-const (
-	KeysModeDefault KeysMode = "default"
-	KeysModeSparse  KeysMode = "sparse"
-)
-
+// KeysMode defines how vault access keys are managed during create and update.
 type KeysMode string
 
+const (
+	// KeysModeDefault preserves a single shared key set for all authorized actors.
+	KeysModeDefault KeysMode = "default"
+
+	// KeysModeSparse assigns each authorized actor an independent key entry.
+	KeysModeSparse KeysMode = "sparse"
+)
+
+// KeysModeState describes the current and desired KeysMode during a vault operation.
 type KeysModeState struct {
 	Current KeysMode `json:"current"`
 	Desired KeysMode `json:"desired"`
 }
 
+// VaultItemKeys represents the key metadata for a vault item, including authorized actors,
+// key storage mode, and an optional search query used to dynamically adjust client access.
 type VaultItemKeys struct {
 	Id          string            `json:"id"`
 	Admins      []string          `json:"admins"`
@@ -30,6 +37,7 @@ type VaultItemKeys struct {
 	encryptor   VaultItemKeyEncryptor
 }
 
+// VaultItemKeyEncryptor defines the function used to encrypt actor keys.
 type VaultItemKeyEncryptor func(
 	v *VaultItemKeys,
 	actors map[string]chef.AccessKey,
@@ -37,11 +45,12 @@ type VaultItemKeyEncryptor func(
 	out map[string]string,
 ) error
 
+// VaultItemKeysResult represents the response returned from key-related vault operations.
 type VaultItemKeysResult struct {
 	URIs []string `json:"uris"`
 }
 
-// BuildKeysItem produces the map that will be used to create the keys data bag item
+// BuildKeysItem returns the data bag item used to persist vault keys.
 func (k *VaultItemKeys) BuildKeysItem() map[string]any {
 	item := map[string]any{
 		"id":           k.Id,
@@ -57,7 +66,7 @@ func (k *VaultItemKeys) BuildKeysItem() map[string]any {
 	return item
 }
 
-// MapKeys returns a slice of the keys of a map
+// MapKeys returns the keys of a map as a slice.
 func MapKeys[K comparable, V any](m map[K]V) []K {
 	keys := make([]K, 0, len(m))
 	for k := range m {
@@ -66,7 +75,7 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 	return keys
 }
 
-// MergeClients merges a payload client list and any clients returned from a search ensuring there are no duplicates
+// MergeClients merges two client lists, removing duplicates.
 func MergeClients(a []string, b []string) []string {
 	seen := make(map[string]struct{})
 
@@ -86,7 +95,7 @@ func MergeClients(a []string, b []string) []string {
 	return out
 }
 
-// EqualLists compares two lists to determine equality
+// EqualLists reports whether two string slices contain the same elements, ignoring order.
 func EqualLists(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -98,7 +107,7 @@ func EqualLists(a, b []string) bool {
 	return slices.Equal(a, b)
 }
 
-// DataBagItemMap returns a mapped data bag items for use in piecing together the decrypted secret
+// DataBagItemMap converts a Chef DataBagItem into a map for processing decrypted vault content.
 func DataBagItemMap(rawItem chef.DataBagItem) (map[string]interface{}, error) {
 	if rawItem == nil {
 		return nil, fmt.Errorf("nil DataBagItem")

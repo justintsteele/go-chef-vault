@@ -2,12 +2,15 @@ package item_keys
 
 import "encoding/json"
 
+// ClientSearchPlan represents the payload sent to the Chef API search endpoint for node queries.
 type ClientSearchPlan struct {
 	Index  string
 	Query  string
 	Fields map[string]interface{}
 }
 
+// BuildClientSearchPlan creates a structured node search query from a normalized search string.
+// If the query is nil or empty, it returns nil.
 func BuildClientSearchPlan(q *string) *ClientSearchPlan {
 	if q == nil || *q == "" {
 		return nil
@@ -22,6 +25,7 @@ func BuildClientSearchPlan(q *string) *ClientSearchPlan {
 	}
 }
 
+// ExtractClients extracts node names from the results of a Chef partial search query.
 func ExtractClients(rows []json.RawMessage) ([]string, error) {
 	type node struct {
 		Name string `json:"name"`

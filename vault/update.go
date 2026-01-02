@@ -6,20 +6,23 @@ import (
 	"go-chef-vault/vault/item_keys"
 )
 
+// UpdateResponse represents the structure of the response from an Update operation.
 type UpdateResponse struct {
 	Response
 	Data     *UpdateDataResponse `json:"data"`
 	KeysURIs []string            `json:"keys_uris"`
 }
 
+// UpdateDataResponse represents the response returned after updating vault content.
 type UpdateDataResponse struct {
 	URI string `json:"uri"`
 }
 
-// Update modifies a vault on the server
+// Update modifies a vault item and its access keys on the Chef server.
 //
-//	Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
-//	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
+// References:
+//   - Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
+//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
 func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
@@ -68,7 +71,7 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 	}, nil
 }
 
-// updateVault performs the reencryption activities for Update and Refresh
+// updateVault performs the shared re-encryption logic used by Update and Refresh.
 func (s *Service) updateVault(payload *Payload, modeState *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error) {
 	secret, err := item_keys.GenSecret(32)
 	if err != nil {

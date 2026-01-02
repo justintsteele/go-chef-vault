@@ -9,9 +9,10 @@ type DeleteResponse struct {
 	KeysURIs []string `json:"keys,omitempty"`
 }
 
-// Delete removes the entire vault, all the items, and keys from the server (nuclear option)
+// Delete removes the entire vault, all the items, and keys from the Chef Server (nuclear option).
 //
-//	Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
+// References:
+//   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
 func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
 	vaultUri := fmt.Sprintf("%s", s.vaultURL(name))
 	_, err = s.Client.DataBags.Delete(name)
@@ -23,10 +24,11 @@ func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
 	return
 }
 
-// DeleteItem removes a specified item from a vault and its keys
+// DeleteItem removes a specified item from a vault and its keys.
 //
-//	Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
-//	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_delete.rb
+// References:
+//   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
+//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_delete.rb
 func (s *Service) DeleteItem(name string, item string) (resp *DeleteResponse, err error) {
 	itemUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item)
 	resp = &DeleteResponse{

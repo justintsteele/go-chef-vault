@@ -7,12 +7,14 @@ import (
 	"github.com/go-chef/chef"
 )
 
-// RefreshResponse intentionally mirrors UpdateResponse for API parity
+// RefreshResponse intentionally mirrors UpdateResponse for API parity.
 type RefreshResponse = UpdateResponse
 
-// Refresh cleans and refreshes the vault, its clients, and admins
+// Refresh reprocesses the vault search query and ensures all matching nodes have an encrypted secret,
+// without modifying existing vault content or access rules.
 //
-//	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_refresh.rb
+// References:
+//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_refresh.rb
 func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
@@ -51,6 +53,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 		KeysURIs: []string{},
 	}
 
+	// Skip re-encryption when requested and the effective client set is unchanged.
 	if payload.SkipReencrypt && clientsEqual {
 		return refreshResponse, nil
 	}
@@ -80,7 +83,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	}, nil
 }
 
-// clientExists performs a client lookup to validate the requested client still exists in the Chef Server
+// clientExists performs a client lookup to validate the requested client still exists in the Chef Server.
 func (s *Service) clientExists(name string) (bool, error) {
 	_, err := s.Client.Clients.Get(name)
 	if err == nil {
@@ -97,6 +100,7 @@ func (s *Service) clientExists(name string) (bool, error) {
 	return false, err
 }
 
+// cleanClients partitions clients into those that still exist on the Chef server and those that do not.
 func cleanClients(clients []string, exists func(string) (bool, error)) (kept []string, removed []string, err error) {
 	kept = clients[:0]
 

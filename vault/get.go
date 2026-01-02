@@ -8,10 +8,11 @@ import (
 	"github.com/go-chef/chef"
 )
 
-// GetItem returns the decrypted items in the vault
+// GetItem returns the decrypted items in the vault.
 //
-//	Chef API Docs: https://docs.chef.io/api_chef_server/#get-26
-//	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_show.rb
+// References:
+//   - Chef API Docs: https://docs.chef.io/api_chef_server/#get-26
+//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_show.rb
 func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error) {
 	// Fetch raw data bag items
 	rawItem, err := s.Client.DataBags.GetItem(vaultName, vaultItem)
@@ -56,7 +57,7 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		actorKey = sparseKeyMap[actor].(string)
 	}
 
-	aesKey, err := item_keys.DeriveAESKey(
+	aesKey, err := item_keys.DeriveAESKeyForVault(
 		actorKey,
 		s.Client.Auth.PrivateKey,
 	)

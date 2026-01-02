@@ -2,6 +2,7 @@ package vault
 
 import "go-chef-vault/vault/item_keys"
 
+// Payload represents the input parameters used to create, update, or refresh a vault item.
 type Payload struct {
 	VaultName     string
 	VaultItemName string
@@ -14,7 +15,7 @@ type Payload struct {
 	SkipReencrypt bool
 }
 
-// effectiveKeysMode allows the payload to not contain a KeysMode and still enact the default
+// effectiveKeysMode returns the effective keys mode, defaulting when none is specified.
 func (p *Payload) effectiveKeysMode() item_keys.KeysMode {
 	if p.KeysMode == nil {
 		return item_keys.KeysModeDefault
@@ -22,7 +23,7 @@ func (p *Payload) effectiveKeysMode() item_keys.KeysMode {
 	return *p.KeysMode
 }
 
-// resolveKeysMode resolves the desired keys mode from the payload and the current mode
+// resolveKeysMode determines the effective keys mode and returns the corresponding mode state.
 func (p *Payload) resolveKeysMode(current item_keys.KeysMode) (item_keys.KeysMode, *item_keys.KeysModeState) {
 	if p.KeysMode == nil {
 		return current, &item_keys.KeysModeState{
@@ -37,7 +38,7 @@ func (p *Payload) resolveKeysMode(current item_keys.KeysMode) (item_keys.KeysMod
 	}
 }
 
-// mergeKeyActors merges the actors from the payload into the state, respecting the clean flag
+// mergeKeyActors merges payload actors into the existing key state, honoring the clean flag.
 func (p *Payload) mergeKeyActors(state *item_keys.VaultItemKeys) {
 	if p.Admins != nil {
 		state.Admins = item_keys.MergeClients(state.Admins, p.Admins)

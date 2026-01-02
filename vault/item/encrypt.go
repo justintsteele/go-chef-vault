@@ -7,9 +7,10 @@ import (
 	"github.com/go-chef/chef"
 )
 
+// EncryptFunc is a function variable used to allow tests to stub encryption behavior.
 var EncryptFunc = chefcrypto.Encrypt
 
-// Encrypt creates the data half of the vault by creating an encrypted data bag item
+// Encrypt creates the encrypted data bag item for a vault.
 func Encrypt(vaultItemName string, content map[string]interface{}, secret []byte) (chef.DataBagItem, error) {
 	item := make(map[string]any)
 	item["id"] = vaultItemName

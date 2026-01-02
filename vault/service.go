@@ -9,16 +9,18 @@ import (
 	"github.com/go-chef/chef"
 )
 
+// Service provides Vault operations backed by a Chef Server client.
 type Service struct {
 	Client    *chef.Client
 	authorize func(key string) ([]byte, error)
 }
 
+// Response represents the basic structure of a response from a Vault operation.
 type Response struct {
 	URI string `json:"uri"`
 }
 
-// NewService is a constructor for Service. This is used by other vault service methods to authorize access to a vault item.
+// NewService returns a Service configured with the given Chef client.
 func NewService(client *chef.Client) *Service {
 	vs := &Service{
 		Client: client,
@@ -26,7 +28,7 @@ func NewService(client *chef.Client) *Service {
 	return vs
 }
 
-// vaultURL normalizes the vault URL for the response URIs
+// vaultURL constructs the canonical URL for a vault resource.
 func (s *Service) vaultURL(name string) string {
 	ref := &url.URL{
 		Path: path.Join("data", name),
@@ -35,12 +37,7 @@ func (s *Service) vaultURL(name string) string {
 	return s.Client.BaseURL.ResolveReference(ref).String()
 }
 
-// deriveItemKey returns the caller's decrypted AES key
-func (s *Service) deriveItemKey(encKey string) ([]byte, error) {
-	return item_keys.DeriveAESKeyForVault(encKey, s.Client.Auth.PrivateKey)
-}
-
-// getClientsFromSearch takes a search query from the vault payload, executes the search and returns a list of client names satisfied by the search
+// getClientsFromSearch returns the names of clients matching the search query.
 func (s *Service) getClientsFromSearch(payload *Payload) ([]string, error) {
 	plan := item_keys.BuildClientSearchPlan(payload.SearchQuery)
 
@@ -52,6 +49,7 @@ func (s *Service) getClientsFromSearch(payload *Payload) ([]string, error) {
 	return item_keys.ExtractClients(rows)
 }
 
+// executeClientSearch executes a client search plan against the Chef Server and returns the raw results.
 func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]json.RawMessage, error) {
 	if plan == nil {
 		return nil, nil

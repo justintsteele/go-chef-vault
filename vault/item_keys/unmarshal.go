@@ -2,7 +2,8 @@ package item_keys
 
 import "encoding/json"
 
-// UnmarshalJSON overlay for VaultItemKeys that types the response from the *_keys data bag
+// UnmarshalJSON implements custom decoding for VaultItemKeys from a *_keys data bag item,
+// preserving Chef Vault storage semantics.
 func (k *VaultItemKeys) UnmarshalJSON(data []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -39,7 +40,7 @@ func (k *VaultItemKeys) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// toStringSlice converts an interface from a databag to a slice of strings
+// toStringSlice converts a databag value into a slice of strings.
 func toStringSlice(v any) []string {
 	switch t := v.(type) {
 	case []interface{}:

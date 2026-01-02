@@ -2,12 +2,7 @@ package item_keys
 
 import "fmt"
 
-// search_query handling is split across three layers:
-//  1. NormalizeSearchQuery: schemaless → typed
-//  2. ResolveSearchQuery: request vs existing precedence
-//  3. EffectiveSearchQuery: Chef Vault storage semantics
-
-// NormalizeSearchQuery helps with normalizing the search_query
+// NormalizeSearchQuery converts a schemaless search query value into a typed string or nil.
 func NormalizeSearchQuery(v any) *string {
 	if v == nil {
 		return nil
@@ -35,7 +30,9 @@ func NormalizeSearchQuery(v any) *string {
 	}
 }
 
-// ResolveSearchQuery accounts for the behavior in Chef-Vault where if a search_query is not provided, it stores it as an empty array, all others are stored as a string
+// ResolveSearchQuery applies Chef-Vault precedence rules for search_query values.
+// If a search_query is not provided, Chef-Vault stores it as an empty array;
+// otherwise it is stored as a string.
 func ResolveSearchQuery(keyState interface{}, request *string) *string {
 	if request != nil {
 		return request
@@ -48,7 +45,8 @@ func ResolveSearchQuery(keyState interface{}, request *string) *string {
 	return nil
 }
 
-// EffectiveSearchQuery mimics behavior of ChefVault::ItemKeys initializer for search_query
+// EffectiveSearchQuery converts a normalized search query into the form expected by Chef-Vault,
+// matching the behavior of ChefVault::ItemKeys initialization.
 func EffectiveSearchQuery(q *string) interface{} {
 	if q == nil {
 		return []string{}

@@ -9,7 +9,7 @@ import (
 	"errors"
 )
 
-// encryptSharedSecret takes in the pem of the actor and the shared secret, merges them, and encrypts it
+// encryptSharedSecret encrypts a shared secret using an actor's RSA public key.
 func encryptSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
@@ -33,7 +33,7 @@ func encryptSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
 	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
-// GenSecret creates the shared secret used in the encryption of the vault items
+// GenSecret generates a random shared secret for vault item encryption.
 func GenSecret(n int) ([]byte, error) {
 	b := make([]byte, n)
 	_, err := rand.Read(b)

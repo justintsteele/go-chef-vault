@@ -8,9 +8,11 @@ import (
 	"strings"
 )
 
+// DefaultVaultItemDecrypt is a function variable used to allow tests to stub vault item decryption.
 var DefaultVaultItemDecrypt VaultItemDecryptor = (*VaultItem).decryptItems
 
-// Decrypt lazy loader that decrypts the secret
+// Decrypt decrypts the vault item data using the provided AES key,
+// delegating to the configured decryptor to allow test overrides.
 func (i *VaultItem) Decrypt(aesKey []byte) (map[string]interface{}, error) {
 	if i.decryptor == nil {
 		i.decryptor = DefaultVaultItemDecrypt
@@ -18,7 +20,7 @@ func (i *VaultItem) Decrypt(aesKey []byte) (map[string]interface{}, error) {
 	return i.decryptor(i, aesKey)
 }
 
-// decrypt the secret for real
+// decryptItems performs AES-GCM decryption of all encrypted values in the vault item.
 func (i *VaultItem) decryptItems(aesKey []byte) (map[string]interface{}, error) {
 	block, err := aes.NewCipher(aesKey)
 	if err != nil {
@@ -43,6 +45,7 @@ func (i *VaultItem) decryptItems(aesKey []byte) (map[string]interface{}, error) 
 	return out, nil
 }
 
+// decryptValue decrypts a single encrypted vault item value.
 func decryptValue(gcm cipher.AEAD, ev EncryptedValue) (any, error) {
 	ct, err := base64.StdEncoding.DecodeString(CleanB64(ev.EncryptedData))
 	if err != nil {
@@ -80,7 +83,7 @@ func decryptValue(gcm cipher.AEAD, ev EncryptedValue) (any, error) {
 	return val, nil
 }
 
-// CleanB64 ensures base64 strings do not have extraneous characters in them
+// CleanB64 removes extraneous whitespace from a base64-encoded string.
 func CleanB64(s string) string {
 	return strings.Map(func(r rune) rune {
 		switch r {

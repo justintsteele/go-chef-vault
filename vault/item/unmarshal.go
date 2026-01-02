@@ -2,7 +2,7 @@ package item
 
 import "encoding/json"
 
-// UnmarshalJSON overlay for VaultItem that types the response from the encrypted data bag
+// UnmarshalJSON implements custom decoding for VaultItem from a Chef encrypted data bag item.
 func (i *VaultItem) UnmarshalJSON(data []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -12,6 +12,7 @@ func (i *VaultItem) UnmarshalJSON(data []byte) error {
 	i.Items = make(map[string]EncryptedValue)
 	for k, v := range raw {
 		if k == "id" {
+			// Chef guarantees id is a string for encrypted data bag items.
 			i.Id = v.(string)
 		}
 

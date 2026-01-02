@@ -18,10 +18,11 @@ type CreateDataResponse struct {
 	URI string `json:"uri"`
 }
 
-// Create adds a vault to the server
+// Create adds a vault item and its associated keys to the Chef server.
 //
-//	Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
-//	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_create.rb
+// References:
+//   - Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
+//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_create.rb
 func (s *Service) Create(payload *Payload) (result *CreateResponse, err error) {
 	vaultDataBag := chef.DataBag{
 		Name: payload.VaultName,

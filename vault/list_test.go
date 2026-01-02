@@ -10,8 +10,8 @@ import (
 )
 
 func TestService_List(t *testing.T) {
-	setup()
-	defer teardown()
+	setup(t)
+	t.Cleanup(teardown)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -39,8 +39,8 @@ func TestService_List(t *testing.T) {
 }
 
 func TestService_ListItems(t *testing.T) {
-	setup()
-	defer teardown()
+	setup(t)
+	t.Cleanup(teardown)
 
 	mux.HandleFunc("/data/vault1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{

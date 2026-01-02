@@ -2,7 +2,7 @@ package vault
 
 import (
 	"encoding/json"
-	"go-chef-vault/vaultcrypto"
+	"go-chef-vault/vault/item_keys"
 	"slices"
 	"testing"
 
@@ -10,9 +10,9 @@ import (
 )
 
 func TestBuildKeys_NoAdminsFails(t *testing.T) {
-	keysMode := KeysModeDefault
-	secret, _ := vaultcrypto.GenSecret(32)
-	payload := &VaultPayload{
+	keysMode := item_keys.KeysModeDefault
+	secret, _ := item_keys.GenSecret(32)
+	payload := &Payload{
 		VaultName:     "vault1",
 		VaultItemName: "secret1",
 		Content:       nil,
@@ -31,7 +31,7 @@ func TestBuildKeys_MergesClients(t *testing.T) {
 	setupStubs(t)
 
 	payload, _ := stubPayload([]string{"tester"}, []string{"testhost", "testhost2", "testhost3"}, nil)
-	secret, _ := vaultcrypto.GenSecret(32)
+	secret, _ := item_keys.GenSecret(32)
 
 	item, err := service.buildKeys(payload, secret)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestBuildKeys_EncryptsForAllActors(t *testing.T) {
 	setupStubs(t)
 
 	payload, _ := stubPayload([]string{"tester"}, []string{"testhost", "testhost2", "testhost3", "testhost4"}, nil)
-	secret, _ := vaultcrypto.GenSecret(32)
+	secret, _ := item_keys.GenSecret(32)
 	item, err := service.buildKeys(payload, secret)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestResolveSearchQuery_PreservesExisting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	finalQuery := resolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
+	finalQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
 	shouldQuery := "name:testhost*"
 	if *finalQuery != shouldQuery {
 		t.Fatalf("unexpected search query")
@@ -102,7 +102,7 @@ func TestMapKeys_SortsAndDedupes(t *testing.T) {
 		"testhost":  {},
 	}
 
-	got := mapKeys(input)
+	got := item_keys.MapKeys(input)
 
 	want := []string{"tester", "testhost", "testhost3"}
 
@@ -113,7 +113,7 @@ func TestMapKeys_SortsAndDedupes(t *testing.T) {
 	}
 }
 
-func stubPayload(admins []string, clients []string, searchQuery *string) (*VaultPayload, error) {
+func stubPayload(admins []string, clients []string, searchQuery *string) (*Payload, error) {
 	content := `{"baz": "baz-value-1", "fuz": "fuz-value-2"}`
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
@@ -121,8 +121,8 @@ func stubPayload(admins []string, clients []string, searchQuery *string) (*Vault
 	}
 	admins = append(admins, client.Auth.ClientName)
 	clients = append(clients, "testhost")
-	keysMode := KeysModeDefault
-	return &VaultPayload{
+	keysMode := item_keys.KeysModeDefault
+	return &Payload{
 		VaultName:     "vault1",
 		VaultItemName: "secret1",
 		Content:       raw,

@@ -5,7 +5,7 @@ import (
 )
 
 func refresh(service *vault.Service) (result *vault.UpdateResponse, err error) {
-	pl := &vault.VaultPayload{
+	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
 		Clean:         true,

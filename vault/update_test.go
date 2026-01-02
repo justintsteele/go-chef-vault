@@ -3,6 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
+	"go-chef-vault/vault/item_keys"
 	"reflect"
 	"testing"
 )
@@ -22,8 +23,8 @@ func TestVaultsService_Update(t *testing.T) {
 	var clients []string
 	clients = append(clients, "testhost")
 
-	keysMode := KeysModeDefault
-	pl := &VaultPayload{
+	keysMode := item_keys.KeysModeDefault
+	pl := &Payload{
 		VaultName:     "vault1",
 		VaultItemName: "secret1",
 		Content:       raw,
@@ -35,11 +36,11 @@ func TestVaultsService_Update(t *testing.T) {
 
 	response, err := service.Update(pl)
 	if err != nil {
-		t.Errorf("Vaults.Create returned error: %v", err)
+		t.Errorf("Vaults.Update returned error: %v", err)
 	}
 
 	want := &UpdateResponse{
-		VaultResponse: VaultResponse{
+		Response: Response{
 			URI: fmt.Sprintf("%s/data/vault1", server.URL),
 		},
 		Data: &UpdateDataResponse{

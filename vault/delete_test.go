@@ -8,8 +8,8 @@ import (
 )
 
 func TestVaultsService_Delete(t *testing.T) {
-	setup()
-	defer teardown()
+	setup(t)
+	t.Cleanup(teardown)
 
 	mux.HandleFunc("/data/vault1", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `{"name": "vault1", "json_class": "Chef::DataBag", "chef_type": "data_bag"}`)
@@ -21,7 +21,7 @@ func TestVaultsService_Delete(t *testing.T) {
 	}
 
 	want := &DeleteResponse{
-		VaultResponse: VaultResponse{
+		Response: Response{
 			URI: service.vaultURL("vault1"),
 		},
 	}
@@ -32,8 +32,9 @@ func TestVaultsService_Delete(t *testing.T) {
 }
 
 func TestVaultsService_DeleteItem(t *testing.T) {
-	setup()
-	defer teardown()
+	setup(t)
+	t.Cleanup(teardown)
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/data/vault1/secret1":
@@ -49,7 +50,7 @@ func TestVaultsService_DeleteItem(t *testing.T) {
 		t.Errorf("Vaults.Delete returned error: %v", err)
 	}
 	want := &DeleteResponse{
-		VaultResponse: VaultResponse{
+		Response: Response{
 			URI: fmt.Sprintf("%s/%s", service.vaultURL("vault1"), "secret1"),
 		},
 		KeysURIs: []string{fmt.Sprintf("%s/%s", service.vaultURL("vault1"), "secret1_keys")},

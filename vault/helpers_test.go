@@ -1,7 +1,10 @@
 package vault
 
 import (
+	"crypto/rsa"
 	"fmt"
+	"go-chef-vault/vault/item"
+	"go-chef-vault/vault/item_keys"
 	"net/http"
 	"testing"
 
@@ -11,58 +14,63 @@ import (
 func setupStubs(t *testing.T) {
 	t.Helper()
 
-	setup()
-
+	setup(t)
 	t.Cleanup(teardown)
 
-	cleanupDecrypt := stubVaultItemKeyDecrypt(t)
-	t.Cleanup(cleanupDecrypt)
-
-	cleanupEncrypt := stubVaultItemKeyEncrypt(t)
-	t.Cleanup(cleanupEncrypt)
-
+	stubDeriveAESKey(t)
+	stubVaultItemKeyDecrypt(t)
+	stubVaultItemKeyEncrypt(t)
 	stubMuxGetItem(t)
 	stubMuxCreate(t)
 }
 
-func stubVaultItemKeyEncrypt(t *testing.T) func() {
+func stubVaultItemKeyEncrypt(t *testing.T) {
 	t.Helper()
-	orig := defaultVaultItemKeyEncrypt
-	defaultVaultItemKeyEncrypt = func(_ *VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
+	orig := item_keys.DefaultVaultItemKeyEncrypt
+	item_keys.DefaultVaultItemKeyEncrypt = func(_ *item_keys.VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
 		for actor, key := range actors {
 			out[actor] = fmt.Sprintf("ENCRYPTED %s", key.PublicKey)
 		}
 		return nil
 	}
-	// return teardown
+
+	t.Cleanup(func() { item_keys.DefaultVaultItemKeyEncrypt = orig })
+}
+
+func stubDeriveAESKey(t *testing.T) func() {
+	t.Helper()
+
+	orig := item_keys.DeriveAESKey
+	item_keys.DeriveAESKey = func(_ string, _ *rsa.PrivateKey) ([]byte, error) {
+		return make([]byte, 32), nil
+	}
+
 	return func() {
-		defaultVaultItemKeyEncrypt = orig
+		item_keys.DeriveAESKey = orig
 	}
 }
 
-func stubVaultItemKeyDecrypt(t *testing.T) func() {
+func stubVaultItemKeyDecrypt(t *testing.T) {
 	t.Helper()
 
 	// stub decrypt
-	origDecrypt := defaultVaultItemDecrypt
-	defaultVaultItemDecrypt = func(_ *VaultItem, _ []byte) (map[string]interface{}, error) {
+	origDecrypt := item.DefaultVaultItemDecrypt
+	item.DefaultVaultItemDecrypt = func(_ *item.VaultItem, _ []byte) (map[string]interface{}, error) {
 		return map[string]interface{}{
 			"foo": "fake-foo-value",
 			"bar": "fake-bar-value",
 		}, nil
 	}
 
-	// auth stub
 	origAuthorize := service.authorize
 	service.authorize = func(string) ([]byte, error) {
 		return []byte("fake-aes-key"), nil
 	}
 
-	// return teardown
-	return func() {
-		defaultVaultItemDecrypt = origDecrypt
+	t.Cleanup(func() {
+		item.DefaultVaultItemDecrypt = origDecrypt
 		service.authorize = origAuthorize
-	}
+	})
 }
 
 func stubMuxCreate(t *testing.T) {
@@ -123,6 +131,8 @@ func stubMuxCreate(t *testing.T) {
 									}
 								]
 							}`)
+		default:
+			http.NotFound(w, r)
 		}
 	})
 }

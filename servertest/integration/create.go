@@ -19,7 +19,7 @@ func createVault(service *vault.Service) (res *vault.CreateResponse, err error) 
 
 	// purposefully omit KeysMode so we can test behavior of changing the mode later
 	// purposefully omit SearchQuery because in goiardi we don't have other clients to search
-	pl := &vault.VaultPayload{
+	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
 		Content:       raw,

@@ -1,4 +1,4 @@
-package vaultcrypto
+package item_keys
 
 import (
 	"crypto/rand"
@@ -9,8 +9,8 @@ import (
 	"errors"
 )
 
-// EncryptSharedSecret takes in the pem of the actor and the shared secret, merges them, and encrypts it
-func EncryptSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
+// encryptSharedSecret takes in the pem of the actor and the shared secret, merges them, and encrypts it
+func encryptSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
 		return "", errors.New("failed to parse PEM block containing the public key")

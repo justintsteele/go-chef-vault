@@ -2,13 +2,14 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/vaultcrypto"
+	"go-chef-vault/vault/item"
+	"go-chef-vault/vault/item_keys"
 
 	"github.com/go-chef/chef"
 )
 
 type CreateResponse struct {
-	VaultResponse
+	Response
 	Data     *CreateDataResponse `json:"data"`
 	KeysURIs []string            `json:"keys_uris"`
 }
@@ -21,33 +22,33 @@ type CreateDataResponse struct {
 //
 //	Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
 //	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_create.rb
-func (v *Service) Create(payload *VaultPayload) (result *CreateResponse, err error) {
+func (s *Service) Create(payload *Payload) (result *CreateResponse, err error) {
 	vaultDataBag := chef.DataBag{
 		Name: payload.VaultName,
 	}
 
-	_, vDbErr := v.Client.DataBags.Create(&vaultDataBag)
+	_, vDbErr := s.Client.DataBags.Create(&vaultDataBag)
 	if vDbErr != nil {
 		return nil, vDbErr
 	}
 
 	result = &CreateResponse{
-		VaultResponse: VaultResponse{
-			URI: v.vaultURL(payload.VaultName),
+		Response: Response{
+			URI: s.vaultURL(payload.VaultName),
 		},
 	}
 
-	secret, err := vaultcrypto.GenSecret(32)
+	secret, err := item_keys.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}
 
-	keysModeState := &KeysModeState{
+	keysModeState := &item_keys.KeysModeState{
 		Current: payload.effectiveKeysMode(),
 		Desired: payload.effectiveKeysMode(),
 	}
 
-	keys, err := v.createKeysDataBag(payload, keysModeState, secret, "create")
+	keys, err := s.createKeysDataBag(payload, keysModeState, secret, "create")
 
 	if err != nil {
 		return nil, err
@@ -55,16 +56,16 @@ func (v *Service) Create(payload *VaultPayload) (result *CreateResponse, err err
 
 	result.KeysURIs = append(result.KeysURIs, keys.URIs...)
 
-	eDB, eDBErr := encryptContents(payload, secret)
+	eDB, eDBErr := item.Encrypt(payload.VaultItemName, payload.Content, secret)
 	if eDBErr != nil {
 		return nil, eDBErr
 	}
 
-	if eDbErr := v.Client.DataBags.CreateItem(payload.VaultName, &eDB); eDbErr != nil {
+	if eDbErr := s.Client.DataBags.CreateItem(payload.VaultName, &eDB); eDbErr != nil {
 		return nil, eDbErr
 	}
 
-	result.Data = &CreateDataResponse{URI: fmt.Sprintf("%s/%s", v.vaultURL(payload.VaultName), payload.VaultItemName)}
+	result.Data = &CreateDataResponse{URI: fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), payload.VaultItemName)}
 
 	return result, nil
 }

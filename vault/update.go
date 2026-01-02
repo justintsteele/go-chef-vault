@@ -2,18 +2,14 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/vaultcrypto"
+	"go-chef-vault/vault/item"
+	"go-chef-vault/vault/item_keys"
 )
 
 type UpdateResponse struct {
-	VaultResponse
+	Response
 	Data     *UpdateDataResponse `json:"data"`
 	KeysURIs []string            `json:"keys_uris"`
-}
-
-type KeysModeState struct {
-	Current KeysMode `json:"current"`
-	Desired KeysMode `json:"desired"`
 }
 
 type UpdateDataResponse struct {
@@ -24,25 +20,25 @@ type UpdateDataResponse struct {
 //
 //	Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
 //	Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
-func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
-	keyState, err := v.loadKeysCurrentState(payload)
+func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
+	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	mergeKeyActors(keyState, payload)
+	payload.mergeKeyActors(keyState)
 
-	finalQuery := resolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
+	finalQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
 
-	mode, modeState := resolveKeysMode(keyState.Mode, payload)
+	mode, modeState := payload.resolveKeysMode(keyState.Mode)
 	keyState.Mode = mode
 
-	content, err := resolveUpdateContent(v, payload)
+	content, err := s.resolveUpdateContent(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	updatePayload := &VaultPayload{
+	updatePayload := &Payload{
 		VaultName:     payload.VaultName,
 		VaultItemName: payload.VaultItemName,
 		Content:       content,
@@ -52,19 +48,19 @@ func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
 		Clients:       keyState.Clients,
 	}
 
-	keysResult, err := v.updateVault(updatePayload, modeState)
+	keysResult, err := s.updateVault(updatePayload, modeState)
 	if err != nil {
 		return nil, err
 	}
 
 	return &UpdateResponse{
-		VaultResponse: VaultResponse{
-			URI: v.vaultURL(updatePayload.VaultName),
+		Response: Response{
+			URI: s.vaultURL(updatePayload.VaultName),
 		},
 		Data: &UpdateDataResponse{
 			URI: fmt.Sprintf(
 				"%s/%s",
-				v.vaultURL(updatePayload.VaultName),
+				s.vaultURL(updatePayload.VaultName),
 				updatePayload.VaultItemName,
 			),
 		},
@@ -72,23 +68,24 @@ func (v *Service) Update(payload *VaultPayload) (*UpdateResponse, error) {
 	}, nil
 }
 
-func (v *Service) updateVault(payload *VaultPayload, modeState *KeysModeState) (*VaultItemKeysResult, error) {
-	secret, err := vaultcrypto.GenSecret(32)
+// updateVault performs the reencryption activities for Update and Refresh
+func (s *Service) updateVault(payload *Payload, modeState *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error) {
+	secret, err := item_keys.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}
 
-	keysResult, err := v.createKeysDataBag(payload, modeState, secret, "update")
+	keysResult, err := s.createKeysDataBag(payload, modeState, secret, "update")
 	if err != nil {
 		return nil, err
 	}
 
-	encrypted, err := encryptContents(payload, secret)
+	encrypted, err := item.Encrypt(payload.VaultItemName, payload.Content, secret)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := v.Client.DataBags.UpdateItem(
+	if err := s.Client.DataBags.UpdateItem(
 		payload.VaultName,
 		payload.VaultItemName,
 		&encrypted,

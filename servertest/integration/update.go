@@ -18,7 +18,7 @@ func updateContent(service *vault.Service) (result *vault.UpdateResponse, err er
 	var admins []string
 	admins = append(admins, service.Client.Auth.ClientName)
 
-	pl := &vault.VaultPayload{
+	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
 		Content:       raw,

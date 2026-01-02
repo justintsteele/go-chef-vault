@@ -78,7 +78,7 @@ func (s *Service) updateVault(payload *Payload, modeState *item_keys.KeysModeSta
 		return nil, err
 	}
 
-	keysResult, err := s.createKeysDataBag(payload, modeState, secret, "update")
+	keysResult, err := s.createKeysDataBag(payload, modeState, secret)
 	if err != nil {
 		return nil, err
 	}

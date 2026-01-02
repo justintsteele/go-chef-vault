@@ -49,7 +49,7 @@ func (s *Service) Create(payload *Payload) (result *CreateResponse, err error) {
 		Desired: payload.effectiveKeysMode(),
 	}
 
-	keys, err := s.createKeysDataBag(payload, keysModeState, secret, "create")
+	keys, err := s.createKeysDataBag(payload, keysModeState, secret)
 
 	if err != nil {
 		return nil, err

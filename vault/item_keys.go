@@ -10,21 +10,15 @@ import (
 	"github.com/go-chef/chef"
 )
 
-func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, action string, out *item_keys.VaultItemKeysResult) error {
-	switch action {
-	case "create":
-		if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
-			var chefErr *chef.ErrorResponse
-			if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
-				if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
-					return err
-				}
-			} else {
+var chefErr *chef.ErrorResponse
+
+func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
+	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
+		if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
 				return err
 			}
-		}
-	case "update":
-		if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
+		} else {
 			return err
 		}
 	}
@@ -32,7 +26,7 @@ func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, actio
 	return nil
 }
 
-func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, action string, out *item_keys.VaultItemKeysResult) error {
+func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
 	baseKeys := map[string]any{
 		"id":      keys["id"],
 		"admins":  keys["admins"],
@@ -40,13 +34,12 @@ func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, action 
 		"mode":    keys["mode"],
 	}
 
-	switch action {
-	case "create":
-		if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
-			return err
-		}
-	case "update":
-		if err := s.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
+	if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
+		if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+			if err := s.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
 	}
@@ -62,21 +55,13 @@ func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, action 
 			"id": sparseId,
 		}
 		sparseItem[k] = val
-		switch action {
-		case "create":
-			if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
-				return err
-			}
-		case "update":
-			if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
-				var chefErr *chef.ErrorResponse
-				if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
-					if err := s.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
-						return err
-					}
-				} else {
+		if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
+			if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+				if err := s.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
 					return err
 				}
+			} else {
+				return err
 			}
 		}
 		out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), sparseId))
@@ -129,7 +114,7 @@ func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKe
 	return &vik, nil
 }
 
-func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.KeysModeState, secret []byte, action string) (*item_keys.VaultItemKeysResult, error) {
+func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.KeysModeState, secret []byte) (*item_keys.VaultItemKeysResult, error) {
 	mode := payload.effectiveKeysMode()
 	keys, err := s.buildKeys(payload, secret)
 	result := &item_keys.VaultItemKeysResult{}
@@ -142,16 +127,15 @@ func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.K
 		if err := s.cleanupCurrentKeys(payload, keysModeState, keys); err != nil {
 			return nil, err
 		}
-		action = "create"
 	}
 
 	switch mode {
 	case item_keys.KeysModeDefault:
-		if err := s.buildDefaultKeys(payload, &keys, action, result); err != nil {
+		if err := s.buildDefaultKeys(payload, &keys, result); err != nil {
 			return nil, err
 		}
 	case item_keys.KeysModeSparse:
-		if err := s.buildSparseKeys(payload, keys, action, result); err != nil {
+		if err := s.buildSparseKeys(payload, keys, result); err != nil {
 			return nil, err
 		}
 	default:

@@ -27,7 +27,9 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	}
 
 	refreshPayload := &Payload{
-		SearchQuery: searchQuery,
+		VaultName:     payload.VaultName,
+		VaultItemName: payload.VaultItemName,
+		SearchQuery:   searchQuery,
 	}
 
 	searchedClients, err := s.getClientsFromSearch(refreshPayload)

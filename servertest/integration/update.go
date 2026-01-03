@@ -2,6 +2,7 @@ package integration
 
 import (
 	"encoding/json"
+	"go-chef-vault/vault/item_keys"
 
 	"github.com/justintsteele/go-chef-vault/vault"
 )
@@ -19,11 +20,12 @@ func (i *IntegrationService) updateContent() (result *vault.UpdateResponse, err 
 	var admins []string
 	admins = append(admins, i.Service.Client.Auth.ClientName)
 
+	keysMode := item_keys.KeysModeSparse
 	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
 		Content:       raw,
-		KeysMode:      nil,
+		KeysMode:      &keysMode,
 		SearchQuery:   &query,
 		Admins:        admins,
 		Clients:       []string{},

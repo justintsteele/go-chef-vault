@@ -8,6 +8,18 @@ import (
 )
 
 func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error) {
+	const nodeName = "testhost2"
+	defer func() {
+		// Delete our new node and client so we can re-run the tests without panics
+		if err := i.Service.Client.Nodes.Delete(nodeName); err != nil {
+			return
+		}
+
+		if err := i.Service.Client.Clients.Delete(nodeName); err != nil {
+			return
+		}
+	}()
+
 	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
@@ -16,7 +28,6 @@ func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error)
 	}
 
 	// Here we add a new node and client so that the search query we added in update has something new to find.
-	const nodeName = "testhost2"
 	newNode := chef.NewNode(nodeName)
 	node, err := i.Service.Client.Nodes.Post(newNode)
 	if err != nil {
@@ -46,15 +57,6 @@ func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error)
 		return
 	}
 	report("Get Item Keys:", dbr)
-
-	// Delete our new node and client so we can re-run the tests without panics
-	if err := i.Service.Client.Nodes.Delete(nodeName); err != nil {
-		return nil, err
-	}
-
-	if err := i.Service.Client.Clients.Delete(nodeName); err != nil {
-		return nil, err
-	}
 
 	return
 }

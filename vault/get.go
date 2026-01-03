@@ -39,13 +39,13 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 	var actorKey string
 	keyMode := keysMap["mode"]
 	switch keyMode {
-	case "default":
+	case string(item_keys.KeysModeDefault):
 		publicKey, ok := keysMap[actor]
 		if !ok {
 			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
 		}
 		actorKey = publicKey.(string)
-	case "sparse":
+	case string(item_keys.KeysModeSparse):
 		rawSparseKey, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_key_"+actor)
 		if err != nil {
 			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)

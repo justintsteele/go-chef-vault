@@ -3,6 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"go-chef-vault/vault/item_keys"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -92,6 +93,28 @@ func TestResolveSearchQuery_PreservesExisting(t *testing.T) {
 	shouldQuery := "name:testhost*"
 	if *finalQuery != shouldQuery {
 		t.Fatalf("unexpected search query")
+	}
+}
+
+func TestResolveSearchQuery_OverwriteWithNew(t *testing.T) {
+	setupStubs(t)
+
+	payload, err := stubPayload([]string{"tester"}, []string{"testhost"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	keyState, err := service.loadKeysCurrentState(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := "name:testhost* AND chef_environment:development"
+	payload.SearchQuery = &query
+
+	resolvedQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
+
+	if !reflect.DeepEqual(resolvedQuery, payload.SearchQuery) {
+		t.Errorf("payload.SearchQuery = %v, want %v", resolvedQuery, payload.SearchQuery)
 	}
 }
 

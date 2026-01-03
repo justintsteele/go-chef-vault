@@ -37,7 +37,7 @@ func stubVaultItemKeyEncrypt(t *testing.T) {
 	t.Cleanup(func() { item_keys.DefaultVaultItemKeyEncrypt = orig })
 }
 
-func stubDeriveAESKey(t *testing.T) func() {
+func stubDeriveAESKey(t *testing.T) {
 	t.Helper()
 
 	orig := item_keys.DeriveAESKey
@@ -45,9 +45,7 @@ func stubDeriveAESKey(t *testing.T) func() {
 		return make([]byte, 32), nil
 	}
 
-	return func() {
-		item_keys.DeriveAESKey = orig
-	}
+	t.Cleanup(func() { item_keys.DeriveAESKey = orig })
 }
 
 func stubVaultItemKeyDecrypt(t *testing.T) {
@@ -91,6 +89,24 @@ func stubMuxCreate(t *testing.T) {
 		case "/users/pivotal/keys/default":
 			fmt.Fprintf(w, `{
              			        "name": "pivotal",
+								"public_key": "RSA KEY",
+								"expiration_date": "infinity"
+                         	}`)
+		case "/clients/testhost":
+			fmt.Fprintf(w, `{
+             			        "name": "testhost",
+								"public_key": "RSA KEY",
+								"expiration_date": "infinity"
+                         	}`)
+		case "/clients/testhost3":
+			fmt.Fprintf(w, `{
+             			        "name": "testhost3",
+								"public_key": "RSA KEY",
+								"expiration_date": "infinity"
+                         	}`)
+		case "/clients/testhost4":
+			fmt.Fprintf(w, `{
+             			        "name": "testhost4",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)

@@ -2,19 +2,16 @@ package vault
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
+	"go-chef-vault/vault/cheferr"
 	"go-chef-vault/vault/item_keys"
-	"net/http"
 
 	"github.com/go-chef/chef"
 )
 
-var chefErr *chef.ErrorResponse
-
 func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
 	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
-		if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+		if cheferr.IsConflict(err) {
 			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
 				return err
 			}
@@ -36,7 +33,7 @@ func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *it
 	}
 
 	if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
-		if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+		if cheferr.IsConflict(err) {
 			if err := s.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
 				return err
 			}
@@ -57,7 +54,7 @@ func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *it
 		}
 		sparseItem[k] = val
 		if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
-			if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode == http.StatusConflict {
+			if cheferr.IsConflict(err) {
 				if err := s.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
 					return err
 				}

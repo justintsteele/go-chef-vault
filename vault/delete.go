@@ -1,12 +1,9 @@
 package vault
 
 import (
-	"errors"
 	"fmt"
+	"go-chef-vault/vault/cheferr"
 	"go-chef-vault/vault/item_keys"
-	"net/http"
-
-	"github.com/go-chef/chef"
 )
 
 type DeleteResponse struct {
@@ -90,11 +87,10 @@ func (s *Service) deleteDefaultKeys(name string, item string, out *DeleteRespons
 
 // deleteSparseKeys removes all actor keys and the base sparse keys item.
 func (s *Service) deleteSparseKeys(name string, item string, keyState *item_keys.VaultItemKeys, out *DeleteResponse) (err error) {
-	var chefErr *chef.ErrorResponse
-	sparseId := fmt.Sprintf("%s_keys", item)
-	baseUri := fmt.Sprintf("%s/%s", s.vaultURL(name), sparseId)
-	if err := s.Client.DataBags.DeleteItem(name, sparseId); err != nil {
-		if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode != http.StatusNotFound {
+	baseKeyId := fmt.Sprintf("%s_keys", item)
+	baseUri := fmt.Sprintf("%s/%s", s.vaultURL(name), baseKeyId)
+	if err := s.Client.DataBags.DeleteItem(name, baseKeyId); err != nil {
+		if !cheferr.IsNotFound(err) {
 			return err
 		}
 	}
@@ -105,7 +101,7 @@ func (s *Service) deleteSparseKeys(name string, item string, keyState *item_keys
 		sparseId := fmt.Sprintf("%s_key_%s", item, actor)
 		adminKeyUri := fmt.Sprintf("%s/%s", s.vaultURL(name), sparseId)
 		if err := s.Client.DataBags.DeleteItem(name, sparseId); err != nil {
-			if errors.As(err, &chefErr) && chefErr.Response != nil && chefErr.Response.StatusCode != http.StatusNotFound {
+			if !cheferr.IsNotFound(err) {
 				return err
 			}
 		}

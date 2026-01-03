@@ -67,6 +67,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	refreshPayload.Admins = keyState.Admins
 	refreshPayload.Clients = normalizedClients
 	refreshPayload.Content = refreshContent
+	refreshPayload.KeysMode = &keyState.Mode
 
 	modeState := &item_keys.KeysModeState{
 		Current: keyState.Mode,

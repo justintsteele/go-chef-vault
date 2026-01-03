@@ -32,19 +32,8 @@ func TestVaultsService_Delete(t *testing.T) {
 }
 
 func TestVaultsService_DeleteItem(t *testing.T) {
-	setup(t)
-	t.Cleanup(teardown)
+	setupStubs(t)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/data/vault1/secret1":
-			fmt.Fprintf(w, ``)
-		case "/data/vault1/secret1_keys":
-			fmt.Fprintf(w, ``)
-		default:
-			http.NotFound(w, r)
-		}
-	})
 	response, err := service.DeleteItem("vault1", "secret1")
 	if err != nil {
 		t.Errorf("Vaults.Delete returned error: %v", err)

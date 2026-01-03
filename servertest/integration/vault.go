@@ -8,6 +8,16 @@ import (
 	"github.com/justintsteele/go-chef-vault/vault"
 )
 
+type IntegrationService struct {
+	Service *vault.Service
+}
+
+func NewIntegrationService(service *vault.Service) *IntegrationService {
+	return &IntegrationService{
+		Service: service,
+	}
+}
+
 func RunVault(cfg Config) error {
 	if cfg.Target == TargetGoiardi {
 		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
@@ -16,17 +26,18 @@ func RunVault(cfg Config) error {
 				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiAdminUser)
 				client := cfg.mustCreateClient()
 				service := vault.NewService(client)
+				isvc := NewIntegrationService(service)
 
 				runStep("Delete Items", func() (any, error) {
-					return deleteItem(service)
+					return isvc.deleteItem()
 				})
 
 				runStep("Delete Vault", func() (any, error) {
-					return deleteVault(service)
+					return isvc.deleteVault()
 				})
 
 				runStep("Delete User", func() (any, error) {
-					return deleteUser(service)
+					return isvc.deleteUser()
 				})
 			}
 		}()
@@ -34,37 +45,38 @@ func RunVault(cfg Config) error {
 
 	client := cfg.mustCreateClient()
 	service := vault.NewService(client)
+	isvc := NewIntegrationService(service)
 
 	runStep("Create Vault", func() (any, error) {
-		return createVault(service)
+		return isvc.createVault()
 	})
 
 	runStep("Get Item", func() (any, error) {
-		return getVault(service)
+		return isvc.getVault()
 	})
 
 	runStep("Update Item", func() (any, error) {
-		return updateContent(service)
+		return isvc.updateContent()
 	})
 
 	runStep("Get Item", func() (any, error) {
-		return getVault(service)
+		return isvc.getVault()
 	})
 
 	runStep("Get Item Keys", func() (any, error) {
-		return getKeys(service)
+		return isvc.getKeys()
 	})
 
 	runStep("List Items", func() (any, error) {
-		return listItems(service)
+		return isvc.listItems()
 	})
 
 	runStep("List Vaults", func() (any, error) {
-		return list(service)
+		return isvc.list()
 	})
 
 	runStep("Refresh Vaults", func() (any, error) {
-		return refresh(service)
+		return isvc.refresh()
 	})
 
 	return nil

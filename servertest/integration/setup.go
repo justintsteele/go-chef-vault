@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 
 	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/vault"
 )
 
 const (
@@ -174,8 +173,8 @@ type userDeleteResponse struct {
 	URI string `json:"uri"`
 }
 
-func deleteUser(service *vault.Service) (response *userDeleteResponse, err error) {
-	if dErr := service.Client.Users.Delete(goiardiUser); err != nil {
+func (i *IntegrationService) deleteUser() (response *userDeleteResponse, err error) {
+	if dErr := i.Service.Client.Users.Delete(goiardiUser); err != nil {
 		return nil, dErr
 	}
 
@@ -183,7 +182,7 @@ func deleteUser(service *vault.Service) (response *userDeleteResponse, err error
 		Path: path.Join("users", goiardiUser),
 	}
 
-	response = &userDeleteResponse{URI: service.Client.BaseURL.ResolveReference(ref).String()}
+	response = &userDeleteResponse{URI: i.Service.Client.BaseURL.ResolveReference(ref).String()}
 	return
 }
 

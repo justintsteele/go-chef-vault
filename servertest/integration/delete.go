@@ -4,8 +4,8 @@ import (
 	"github.com/justintsteele/go-chef-vault/vault"
 )
 
-func deleteVault(service *vault.Service) (result *vault.DeleteResponse, err error) {
-	result, err = service.Delete(vaultName)
+func (i *IntegrationService) deleteVault() (result *vault.DeleteResponse, err error) {
+	result, err = i.Service.Delete(vaultName)
 	if err != nil {
 		return
 	}
@@ -13,8 +13,8 @@ func deleteVault(service *vault.Service) (result *vault.DeleteResponse, err erro
 	return
 }
 
-func deleteItem(service *vault.Service) (result *vault.DeleteResponse, err error) {
-	result, err = service.DeleteItem(vaultName, vaultItemName)
+func (i *IntegrationService) deleteItem() (result *vault.DeleteResponse, err error) {
+	result, err = i.Service.DeleteItem(vaultName, vaultItemName)
 	if err != nil {
 		return
 	}

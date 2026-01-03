@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestVaultService_RefreshClean(t *testing.T) {
+func TestRefresh_Clean(t *testing.T) {
 	setupStubs(t)
 
 	pl := &Payload{
@@ -32,7 +32,7 @@ func TestVaultService_RefreshClean(t *testing.T) {
 	}
 }
 
-func TestVaultService_RefreshSkip(t *testing.T) {
+func TestRefresh_SkipReencrypt(t *testing.T) {
 	setupStubs(t)
 
 	pl := &Payload{
@@ -56,5 +56,30 @@ func TestVaultService_RefreshSkip(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got: %v, want: %v", got, want)
+	}
+}
+
+func TestRefresh_CleanClients(t *testing.T) {
+	setupStubs(t)
+
+	clients := []string{
+		"testhost",
+		"testhost2",
+		"testhost3",
+		"testhost4",
+		"testhost5",
+	}
+	kept, removed, err := cleanClients(clients, service.clientExists)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wantKept := []string{"testhost", "testhost3", "testhost4"}
+	wantRemoved := []string{"testhost2", "testhost5"}
+	if !reflect.DeepEqual(kept, wantKept) {
+		t.Errorf("kept: %v, wantKept: %v", kept, wantKept)
+	}
+	if !reflect.DeepEqual(removed, wantRemoved) {
+		t.Errorf("removed: %v, wantRemoved: %v", removed, wantRemoved)
 	}
 }

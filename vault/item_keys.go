@@ -28,10 +28,11 @@ func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *
 
 func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
 	baseKeys := map[string]any{
-		"id":      keys["id"],
-		"admins":  keys["admins"],
-		"clients": keys["clients"],
-		"mode":    keys["mode"],
+		"id":           keys["id"],
+		"admins":       keys["admins"],
+		"clients":      keys["clients"],
+		"mode":         keys["mode"],
+		"search_query": keys["search_query"],
 	}
 
 	if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {

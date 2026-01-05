@@ -12,6 +12,13 @@ type IntegrationService struct {
 	Service *vault.Service
 }
 
+const (
+	newNodeName   = "testhost1"
+	fakeNodeName  = "fakehost1"
+	vaultName     = "go-vault1"
+	vaultItemName = "secret1"
+)
+
 func NewIntegrationService(service *vault.Service) *IntegrationService {
 	return &IntegrationService{
 		Service: service,
@@ -22,11 +29,16 @@ func RunVault(cfg Config) error {
 	if cfg.Target == TargetGoiardi {
 		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
 		defer func() {
+			client := cfg.mustCreateClient()
+			service := vault.NewService(client)
+			isvc := NewIntegrationService(service)
+
+			// Delete our new node and client so we can re-run the tests without panics
+			Must(isvc.deleteClients(newNodeName))
+			Must(isvc.deleteClients(fakeNodeName))
+
 			if !cfg.Keep {
 				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiAdminUser)
-				client := cfg.mustCreateClient()
-				service := vault.NewService(client)
-				isvc := NewIntegrationService(service)
 
 				runStep("Delete Items", func() (any, error) {
 					return isvc.deleteItem()
@@ -79,6 +91,9 @@ func RunVault(cfg Config) error {
 		return isvc.refresh()
 	})
 
+	runStep("Remove", func() (any, error) {
+		return isvc.remove()
+	})
 	return nil
 }
 

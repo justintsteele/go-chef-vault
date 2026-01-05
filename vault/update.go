@@ -47,8 +47,8 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 		Content:       content,
 		KeysMode:      &mode,
 		SearchQuery:   finalQuery,
-		Admins:        keyState.Admins,
-		Clients:       keyState.Clients,
+		Admins:        payload.Admins,
+		Clients:       payload.Clients,
 	}
 
 	keysResult, err := s.updateVault(updatePayload, modeState)

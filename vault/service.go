@@ -39,6 +39,10 @@ func (s *Service) vaultURL(name string) string {
 
 // getClientsFromSearch returns the names of clients matching the search query.
 func (s *Service) getClientsFromSearch(payload *Payload) ([]string, error) {
+	if payload.SearchQuery == nil {
+		return []string{}, nil
+	}
+
 	plan := item_keys.BuildClientSearchPlan(payload.SearchQuery)
 
 	rows, err := s.executeClientSearch(plan)

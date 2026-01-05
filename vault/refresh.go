@@ -2,9 +2,8 @@ package vault
 
 import (
 	"errors"
+	"go-chef-vault/vault/cheferr"
 	"go-chef-vault/vault/item_keys"
-
-	"github.com/go-chef/chef"
 )
 
 // RefreshResponse intentionally mirrors UpdateResponse for API parity.
@@ -93,11 +92,8 @@ func (s *Service) clientExists(name string) (bool, error) {
 		return true, nil
 	}
 
-	var chefErr *chef.ErrorResponse
-	if errors.As(err, &chefErr) {
-		if chefErr.Response.StatusCode == 404 {
-			return false, nil
-		}
+	if cheferr.IsNotFound(err) {
+		return false, nil
 	}
 
 	return false, err

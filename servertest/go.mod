@@ -7,4 +7,4 @@ require (
 	github.com/justintsteele/go-chef-vault v0.0.0
 )
 
-replace github.com/justintsteele/go-chef-vault => ..
+replace github.com/justintsteele/go-chef-vault => ../

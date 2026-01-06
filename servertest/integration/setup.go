@@ -233,9 +233,11 @@ func createUser(user map[string]any, client *chef.Client, v interface{}) error {
 	}
 
 	res, err := client.Do(req, v)
-	if res != nil {
-		defer res.Body.Close()
-	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			fmt.Printf("failed to close response body")
+		}
+	}()
 
 	return err
 }
@@ -261,7 +263,11 @@ func generateRSAKeyPair(dir, name string) error {
 	if err != nil {
 		return fmt.Errorf("open private key file: %w", err)
 	}
-	defer privFile.Close()
+	defer func() {
+		if err := privFile.Close(); err != nil {
+			fmt.Printf("failed to close private key file")
+		}
+	}()
 
 	if err := pem.Encode(privFile, privBlock); err != nil {
 		return fmt.Errorf("encode private key: %w", err)
@@ -282,7 +288,11 @@ func generateRSAKeyPair(dir, name string) error {
 	if err != nil {
 		return fmt.Errorf("open public key file: %w", err)
 	}
-	defer pubFile.Close()
+	defer func() {
+		if err := pubFile.Close(); err != nil {
+			fmt.Printf("failed to close public key file")
+		}
+	}()
 
 	if err := pem.Encode(pubFile, pubBlock); err != nil {
 		return fmt.Errorf("encode public key: %w", err)

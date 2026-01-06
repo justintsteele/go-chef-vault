@@ -40,19 +40,11 @@ func (p *Payload) resolveKeysMode(current item_keys.KeysMode) (item_keys.KeysMod
 
 // mergeKeyActors merges payload actors into the existing key state, honoring the clean flag.
 func (p *Payload) mergeKeyActors(state *item_keys.VaultItemKeys) {
-	if p.Admins != nil {
-		state.Admins = item_keys.MergeClients(state.Admins, p.Admins)
-	}
+	p.Admins = item_keys.MergeClients(state.Admins, p.Admins)
 
 	if p.Clean {
-		state.Clients = nil
-	}
-
-	if p.Clients != nil {
-		if p.Clean {
-			state.Clients = p.Clients
-		} else {
-			state.Clients = item_keys.MergeClients(state.Clients, p.Clients)
-		}
+		p.Clients = nil
+	} else {
+		p.Clients = item_keys.MergeClients(state.Clients, p.Clients)
 	}
 }

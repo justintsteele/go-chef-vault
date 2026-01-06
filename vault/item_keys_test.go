@@ -42,8 +42,8 @@ func TestBuildKeys_MergesClients(t *testing.T) {
 	got := item["clients"].([]string)
 	want := []string{"testhost", "testhost3"}
 
-	if !slices.Equal(got, want) {
-		t.Fatalf("clients mismatch: want=%v got=%v", want, got)
+	if !item_keys.EqualLists(got, want) {
+		t.Fatalf("got %#v, want %#v", got, want)
 	}
 }
 

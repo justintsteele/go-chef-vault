@@ -36,14 +36,14 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 		return nil, err
 	}
 
-	merged := item_keys.MergeClients(searchedClients, keyState.Clients)
+	normalizedClients := item_keys.MergeClients(searchedClients, keyState.Clients)
 
-	kept, _, err := cleanClients(merged, s.clientExists)
-	if err != nil {
-		return nil, err
+	if payload.Clean {
+		normalizedClients, _, err = cleanClients(normalizedClients, s.clientExists)
+		if err != nil {
+			return nil, err
+		}
 	}
-
-	normalizedClients := kept
 
 	clientsEqual := item_keys.EqualLists(keyState.Clients, normalizedClients)
 
@@ -63,6 +63,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	refreshPayload.Admins = keyState.Admins
 	refreshPayload.Clients = normalizedClients
 	refreshPayload.Content = refreshContent

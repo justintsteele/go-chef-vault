@@ -30,7 +30,7 @@ type Config struct {
 func LoadConfig() Config {
 	target := flag.String("target", "goiardi", "goiardi or chefserver")
 	knife := flag.String("knife", filepath.Join(os.Getenv("HOME"), ".chef", "knife.rb"), "path to knife.rb")
-	keep := flag.Bool("keep-workdir", false, "keep goiardi integration workdir")
+	keep := flag.Bool("keep-workdir", false, "prevents deletion of the test user, generated knife config, pem files, and sandbox directory")
 
 	flag.Parse()
 

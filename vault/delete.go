@@ -16,7 +16,7 @@ type DeleteResponse struct {
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
 func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
-	vaultUri := fmt.Sprintf("%s", s.vaultURL(name))
+	vaultUri := s.vaultURL(name)
 	_, err = s.Client.DataBags.Delete(name)
 	result = &DeleteResponse{
 		Response: Response{

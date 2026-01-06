@@ -77,59 +77,59 @@ func stubMuxCreate(t *testing.T) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/data":
-			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1"}`)
+			_, _ = fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1"}`)
 		case "/data/vault1":
-			fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1/secret1"}`)
+			_, _ = fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1/secret1"}`)
 		case "/users/tester/keys/default":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "default",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/users/pivotal/keys/default":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "pivotal",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost3":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost3",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost4":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost4",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost/keys/default":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost3/keys/default":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost3",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/clients/testhost4/keys/default":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
              			        "name": "testhost4",
 								"public_key": "RSA KEY",
 								"expiration_date": "infinity"
                          	}`)
 		case "/search/node":
-			fmt.Fprintf(w, `{
+			_, _ = fmt.Fprintf(w, `{
 								"total": 3,
 								"start": 0,
 								"rows": [
@@ -158,7 +158,7 @@ func stubMuxGetItem(t *testing.T) {
 
 	// item payload
 	mux.HandleFunc("/data/vault1/secret1", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{
+		_, _ = fmt.Fprint(w, `{
 			"id": "secret1",
 			"foo": {
 				"encrypted_data": "foo-value",
@@ -179,7 +179,7 @@ func stubMuxGetItem(t *testing.T) {
 
 	// keys payload
 	mux.HandleFunc("/data/vault1/secret1_keys", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{
+		_, _ = fmt.Fprint(w, `{
 			"id": "secret1_keys",
 			"admins": ["pivotal", "tester"],
 			"clients": ["testhost"],

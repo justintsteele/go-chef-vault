@@ -12,7 +12,7 @@ func TestVaultsService_Delete(t *testing.T) {
 	t.Cleanup(teardown)
 
 	mux.HandleFunc("/data/vault1", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"name": "vault1", "json_class": "Chef::DataBag", "chef_type": "data_bag"}`)
+		_, _ = fmt.Fprintf(w, `{"name": "vault1", "json_class": "Chef::DataBag", "chef_type": "data_bag"}`)
 	})
 
 	response, err := service.Delete("vault1")

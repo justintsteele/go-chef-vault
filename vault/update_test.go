@@ -40,8 +40,8 @@ func TestUpdate_SwitchKeysMode(t *testing.T) {
 		},
 	}
 
-	if !reflect.DeepEqual(got.Response.URI, want.Response.URI) {
-		t.Errorf("Update data URI = %v, want %v", got.Response.URI, want.Response.URI)
+	if !reflect.DeepEqual(got.URI, want.URI) {
+		t.Errorf("Update data URI = %v, want %v", got.URI, want.URI)
 	}
 
 	if !item_keys.EqualLists(got.KeysURIs, want.KeysURIs) {

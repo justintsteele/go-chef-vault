@@ -16,13 +16,13 @@ func TestService_List(t *testing.T) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/data":
-			fmt.Fprint(w, `{"vault1":"http://testhost/data/vault1", "vault2":"http://testhost/data/vault2", "databag1":"http://testhost/data/databag1"}`)
+			_, _ = fmt.Fprint(w, `{"vault1":"http://testhost/data/vault1", "vault2":"http://testhost/data/vault2", "databag1":"http://testhost/data/databag1"}`)
 		case "/data/vault1":
-			fmt.Fprint(w, `{"secret1":"http://testhost/data/vault1/secret1", "secret1_keys":"http://testhost/data/vault1/secret1_keys"}`)
+			_, _ = fmt.Fprint(w, `{"secret1":"http://testhost/data/vault1/secret1", "secret1_keys":"http://testhost/data/vault1/secret1_keys"}`)
 		case "/data/vault2":
-			fmt.Fprint(w, `{"secret2":"http://testhost/data/vault2/secret2", "secret2_keys":"http://testhost/data/vault2/secret2_keys"}`)
+			_, _ = fmt.Fprint(w, `{"secret2":"http://testhost/data/vault2/secret2", "secret2_keys":"http://testhost/data/vault2/secret2_keys"}`)
 		case "/data/databag1":
-			fmt.Fprint(w, `{"foo":"http://testhost/data/databag1/foo"}`)
+			_, _ = fmt.Fprint(w, `{"foo":"http://testhost/data/databag1/foo"}`)
 		default:
 			http.NotFound(w, r)
 		}
@@ -43,7 +43,7 @@ func TestService_ListItems(t *testing.T) {
 	t.Cleanup(teardown)
 
 	mux.HandleFunc("/data/vault1", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{
+		_, _ = fmt.Fprint(w, `{
 						"secret1":"http://testhost/data/vault1/secret1", 
 						"secret1_keys":"http://testhost/data/vault1/secret1_keys",
 						"secret2":"http://testhost/data/vault2/secret2",

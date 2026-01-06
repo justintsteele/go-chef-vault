@@ -74,9 +74,10 @@ func LoadConfig() Config {
 		}
 
 		return Config{
-			Target: TargetChefServer,
-			Knife:  knifePath,
-			Keep:   true,
+			Target:  TargetChefServer,
+			Knife:   knifePath,
+			WorkDir: filepath.Dir(knifePath),
+			Keep:    true,
 		}
 	default:
 		log.Fatalf("unknown target: %s", *target)

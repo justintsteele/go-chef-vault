@@ -33,10 +33,6 @@ func RunVault(cfg Config) error {
 			service := vault.NewService(client)
 			isvc := NewIntegrationService(service)
 
-			// Delete our new node and client so we can re-run the tests without panics
-			Must(isvc.deleteClients(newNodeName))
-			Must(isvc.deleteClients(fakeNodeName))
-
 			if !cfg.Keep {
 				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiAdminUser)
 
@@ -54,6 +50,16 @@ func RunVault(cfg Config) error {
 			}
 		}()
 	}
+
+	defer func() {
+		client := cfg.mustCreateClient()
+		service := vault.NewService(client)
+		isvc := NewIntegrationService(service)
+
+		// Delete our new node and client so we can re-run the tests without panics
+		Must(isvc.deleteClients(newNodeName))
+		Must(isvc.deleteClients(fakeNodeName))
+	}()
 
 	client := cfg.mustCreateClient()
 	service := vault.NewService(client)

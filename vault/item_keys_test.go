@@ -2,12 +2,12 @@ package vault
 
 import (
 	"encoding/json"
-	"go-chef-vault/vault/item_keys"
 	"reflect"
 	"slices"
 	"testing"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 func TestBuildKeys_NoAdminsFails(t *testing.T) {

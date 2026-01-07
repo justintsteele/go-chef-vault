@@ -2,8 +2,9 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/vault/cheferr"
-	"go-chef-vault/vault/item_keys"
+
+	"github.com/justintsteele/go-chef-vault/vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 type DeleteResponse struct {

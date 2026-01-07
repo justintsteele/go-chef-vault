@@ -2,11 +2,11 @@ package vault
 
 import (
 	"encoding/json"
-	"go-chef-vault/vault/item_keys"
 	"net/url"
 	"path"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 // Service provides Vault operations backed by a Chef Server client.

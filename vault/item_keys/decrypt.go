@@ -6,7 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"go-chef-vault/vault/item"
+
+	"github.com/justintsteele/go-chef-vault/vault/item"
 )
 
 // DeriveAESKey is a function variable used to allow tests to stub AES key derivation.

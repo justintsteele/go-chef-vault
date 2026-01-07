@@ -3,9 +3,10 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
-	"go-chef-vault/vault/item_keys"
 	"reflect"
 	"testing"
+
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 func TestVaultsService_Create(t *testing.T) {

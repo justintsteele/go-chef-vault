@@ -2,8 +2,9 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/vault/item"
-	"go-chef-vault/vault/item_keys"
+
+	"github.com/justintsteele/go-chef-vault/vault/item"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 // UpdateResponse represents the structure of the response from an Update operation.

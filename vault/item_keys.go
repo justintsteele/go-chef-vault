@@ -3,10 +3,10 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
-	"go-chef-vault/vault/cheferr"
-	"go-chef-vault/vault/item_keys"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {

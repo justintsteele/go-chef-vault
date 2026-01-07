@@ -3,12 +3,12 @@ package vault
 import (
 	"crypto/rsa"
 	"fmt"
-	"go-chef-vault/vault/item"
-	"go-chef-vault/vault/item_keys"
 	"net/http"
 	"testing"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/vault/item"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 func setupStubs(t *testing.T) {

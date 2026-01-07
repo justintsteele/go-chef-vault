@@ -1,4 +1,4 @@
-module go-chef-vault
+module github.com/justintsteele/go-chef-vault
 
 go 1.25
 

@@ -2,10 +2,10 @@ package vault
 
 import (
 	"fmt"
-	"go-chef-vault/vault/item"
-	"go-chef-vault/vault/item_keys"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/vault/item"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 type CreateResponse struct {

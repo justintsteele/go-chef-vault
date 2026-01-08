@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/vault/item"
 	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
@@ -226,7 +227,7 @@ func (s *Service) resolveUpdateContent(p *Payload) (map[string]any, error) {
 	}
 
 	if p.Content == nil {
-		return item_keys.DataBagItemMap(current)
+		return item.DataBagItemMap(current)
 	}
 
 	merged := make(map[string]any, len(p.Content))

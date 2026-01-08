@@ -25,12 +25,12 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		return nil, err
 	}
 
-	itemMap, err := item_keys.DataBagItemMap(rawItem)
+	itemMap, err := item.DataBagItemMap(rawItem)
 	if err != nil {
 		return nil, err
 	}
 
-	keysMap, err := item_keys.DataBagItemMap(rawKeys)
+	keysMap, err := item.DataBagItemMap(rawKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		if err != nil {
 			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
 		}
-		sparseKeyMap, err := item_keys.DataBagItemMap(rawSparseKey)
+		sparseKeyMap, err := item.DataBagItemMap(rawSparseKey)
 		if err != nil {
 			return nil, err
 		}

@@ -1,7 +1,6 @@
 package item_keys
 
 import (
-	"fmt"
 	"slices"
 	"sort"
 
@@ -105,18 +104,4 @@ func EqualLists(a, b []string) bool {
 	slices.Sort(a)
 	slices.Sort(b)
 	return slices.Equal(a, b)
-}
-
-// DataBagItemMap converts a Chef DataBagItem into a map for processing decrypted vault content.
-func DataBagItemMap(rawItem chef.DataBagItem) (map[string]interface{}, error) {
-	if rawItem == nil {
-		return nil, fmt.Errorf("nil DataBagItem")
-	}
-
-	m, ok := rawItem.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("unexpected DataBagItem type: %T", rawItem)
-	}
-
-	return m, nil
 }

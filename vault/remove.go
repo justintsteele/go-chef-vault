@@ -1,6 +1,9 @@
 package vault
 
-import "github.com/justintsteele/go-chef-vault/vault/item_keys"
+import (
+	"github.com/justintsteele/go-chef-vault/vault/item"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+)
 
 // RemoveResponse represents the structure of the response from a Remove operation.
 type RemoveResponse = UpdateResponse
@@ -88,7 +91,7 @@ func (s *Service) resolveRemoveContent(p *Payload) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	dbi, err := item_keys.DataBagItemMap(current)
+	dbi, err := item.DataBagItemMap(current)
 	if err != nil {
 		return nil, err
 	}

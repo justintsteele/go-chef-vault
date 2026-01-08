@@ -11,17 +11,23 @@ import (
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#get-24
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_list.rb
-func (s *Service) List() (data *chef.DataBagListResult, err error) {
+func (s *Service) List() (*chef.DataBagListResult, error) {
 	dbl, err := s.Client.DataBags.List()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	list := chef.DataBagListResult{}
 
 	for bag, url := range *dbl {
-		if s.bagIsVault(bag) {
+		isVault, err := s.bagIsVault(bag)
+		if err != nil {
+			return nil, err
+		}
+
+		if isVault {
 			list[bag] = url
+
 		}
 	}
 
@@ -49,27 +55,4 @@ func (s *Service) ListItems(name string) (data *chef.DataBagListResult, err erro
 	}
 
 	return &items, nil
-}
-
-// bagIsVault returns bool of whether the specified data bag a vault.
-//
-// References:
-//   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_base.rb#L51
-func (s *Service) bagIsVault(bagName string) bool {
-	rawItems, err := s.Client.DataBags.ListItems(bagName)
-	if err != nil {
-		return false
-	}
-
-	items := *rawItems
-
-	for item := range items {
-		if strings.HasSuffix(item, "_keys") {
-			base := strings.TrimSuffix(item, "_keys")
-			if _, ok := items[base]; ok {
-				return true
-			}
-		}
-	}
-	return false
 }

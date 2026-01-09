@@ -156,7 +156,15 @@ func stubMuxCreate(t *testing.T) {
 func stubMuxGetItem(t *testing.T) {
 	t.Helper()
 
-	// item payload
+	// vault payload
+	mux.HandleFunc("/data/vault1", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprintf(w, `{
+			"secret1": "http://localhost/data/vault1/secret1",
+			"secret1_keys": "http://localhost/data/vault1/secret1_keys"
+		}`)
+	})
+
+	// vault item payload
 	mux.HandleFunc("/data/vault1/secret1", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{
 			"id": "secret1",
@@ -177,7 +185,7 @@ func stubMuxGetItem(t *testing.T) {
 		}`)
 	})
 
-	// keys payload
+	// vault keys payload
 	mux.HandleFunc("/data/vault1/secret1_keys", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{
 			"id": "secret1_keys",
@@ -190,4 +198,44 @@ func stubMuxGetItem(t *testing.T) {
 			"tester": "tester-private-key-b64\n"
 		}`)
 	})
+
+	// encrypted data bag payload
+	mux.HandleFunc("/data/encrdata1", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{ "plaintext1": "http://localhost/data/encrdata1/encritem1" }`)
+	})
+
+	// encrypted data bag item payload
+	mux.HandleFunc("/data/encrdata1/encritem1", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{
+			"id": "encritem1",
+			"foo": {
+				"encrypted_data": "foo-value",
+				"iv": "foo-iv",
+				"auth_tag": "foo-auth-tag",
+				"version": 3,
+				"cipher": "aes-256-gcm"
+			},
+			"bar": {
+				"encrypted_data": "bar-value",
+				"iv": "bar-iv",
+				"auth_tag": "bar-auth-tag",
+				"version": 3,
+				"cipher": "aes-256-gcm"
+			}
+		}`)
+	})
+
+	// data bag payload
+	mux.HandleFunc("/data/databag1", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{ "plaintext1": "http://localhost/data/databag1/plaintext1" }`)
+	})
+
+	// plaintext data bag payload
+	mux.HandleFunc("/data/databag1/plaintext1", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, `{
+			"id": "plaintext1",
+			"plain": "plain-value"
+		}`)
+	})
+
 }

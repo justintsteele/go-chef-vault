@@ -1,8 +1,8 @@
 package vault
 
 import (
-	"github.com/justintsteele/go-chef-vault/vault/item"
-	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 // RemoveResponse represents the structure of the response from a Remove operation.

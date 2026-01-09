@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 func TestUpdate_SwitchKeysMode(t *testing.T) {

@@ -3,8 +3,8 @@ package vault
 import (
 	"errors"
 
-	"github.com/justintsteele/go-chef-vault/vault/cheferr"
-	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 // RefreshResponse intentionally mirrors UpdateResponse for API parity.

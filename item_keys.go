@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/vault/cheferr"
-	"github.com/justintsteele/go-chef-vault/vault/item"
-	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/item"
+	item_keys2 "github.com/justintsteele/go-chef-vault/item_keys"
 )
 
-func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
+func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys2.VaultItemKeysResult) error {
 	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
 		if cheferr.IsConflict(err) {
 			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
@@ -24,7 +24,7 @@ func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *
 	return nil
 }
 
-func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
+func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys2.VaultItemKeysResult) error {
 	baseKeys := map[string]any{
 		"id":           keys["id"],
 		"admins":       keys["admins"],
@@ -68,9 +68,9 @@ func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *it
 	return nil
 }
 
-func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.KeysModeState, keys map[string]any) error {
+func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys2.KeysModeState, keys map[string]any) error {
 	switch keysModeState.Desired {
-	case item_keys.KeysModeDefault:
+	case item_keys2.KeysModeDefault:
 		// If Desired is "default", we need to clean up the sparse keys
 		for key := range keys {
 			switch key {
@@ -82,7 +82,7 @@ func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.
 				return err
 			}
 		}
-	case item_keys.KeysModeSparse:
+	case item_keys2.KeysModeSparse:
 		// If Desired is "sparse", we need to clean up the base keys
 		if err := s.Client.DataBags.DeleteItem(payload.VaultName, payload.VaultItemName+"_keys"); err != nil {
 			return err
@@ -91,7 +91,7 @@ func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.
 	return nil
 }
 
-func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKeys, error) {
+func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys2.VaultItemKeys, error) {
 	raw, err := s.Client.DataBags.GetItem(
 		payload.VaultName,
 		payload.VaultItemName+"_keys",
@@ -105,7 +105,7 @@ func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKe
 		return nil, err
 	}
 
-	var vik item_keys.VaultItemKeys
+	var vik item_keys2.VaultItemKeys
 	if err := json.Unmarshal(b, &vik); err != nil {
 		return nil, err
 	}
@@ -113,10 +113,10 @@ func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKe
 	return &vik, nil
 }
 
-func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.KeysModeState, secret []byte) (*item_keys.VaultItemKeysResult, error) {
+func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys2.KeysModeState, secret []byte) (*item_keys2.VaultItemKeysResult, error) {
 	mode := payload.effectiveKeysMode()
 	keys, err := s.buildKeys(payload, secret)
-	result := &item_keys.VaultItemKeysResult{}
+	result := &item_keys2.VaultItemKeysResult{}
 	if err != nil {
 		return nil, err
 	}
@@ -129,11 +129,11 @@ func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.K
 	}
 
 	switch mode {
-	case item_keys.KeysModeDefault:
+	case item_keys2.KeysModeDefault:
 		if err := s.buildDefaultKeys(payload, &keys, result); err != nil {
 			return nil, err
 		}
-	case item_keys.KeysModeSparse:
+	case item_keys2.KeysModeSparse:
 		if err := s.buildSparseKeys(payload, keys, result); err != nil {
 			return nil, err
 		}
@@ -169,13 +169,13 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 		s.collectClients(searchedClients, clients)
 	}
 
-	finalClients := item_keys.MapKeys(clients)
+	finalClients := item_keys2.MapKeys(clients)
 
-	vik := &item_keys.VaultItemKeys{
+	vik := &item_keys2.VaultItemKeys{
 		Id:          payload.VaultItemName + "_keys",
 		Admins:      payload.Admins,
 		Clients:     finalClients,
-		SearchQuery: item_keys.EffectiveSearchQuery(payload.SearchQuery),
+		SearchQuery: item_keys2.EffectiveSearchQuery(payload.SearchQuery),
 		Keys:        make(map[string]string),
 	}
 

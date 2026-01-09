@@ -5,7 +5,7 @@ package integration
 import (
 	"fmt"
 
-	"github.com/justintsteele/go-chef-vault/vault"
+	"github.com/justintsteele/go-chef-vault"
 )
 
 type IntegrationService struct {

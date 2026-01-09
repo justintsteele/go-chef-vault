@@ -1,6 +1,8 @@
 package vault
 
-import "github.com/justintsteele/go-chef-vault/vault/item_keys"
+import (
+	"github.com/justintsteele/go-chef-vault/item_keys"
+)
 
 // Payload represents the input parameters used to create, update, or refresh a vault item.
 type Payload struct {

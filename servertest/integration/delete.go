@@ -1,7 +1,7 @@
 package integration
 
 import (
-	"github.com/justintsteele/go-chef-vault/vault"
+	"github.com/justintsteele/go-chef-vault"
 )
 
 func (i *IntegrationService) deleteVault() (result *vault.DeleteResponse, err error) {

@@ -3,7 +3,7 @@ package integration
 import (
 	"encoding/json"
 
-	"github.com/justintsteele/go-chef-vault/vault"
+	"github.com/justintsteele/go-chef-vault"
 )
 
 func (i *IntegrationService) remove() (result *vault.UpdateResponse, err error) {

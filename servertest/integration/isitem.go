@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/vault/item"
-	"github.com/justintsteele/go-chef-vault/vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 const (

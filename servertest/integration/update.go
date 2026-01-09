@@ -2,9 +2,9 @@ package integration
 
 import (
 	"encoding/json"
-	"go-chef-vault/vault/item_keys"
 
 	"github.com/justintsteele/go-chef-vault/vault"
+	"github.com/justintsteele/go-chef-vault/vault/item_keys"
 )
 
 func (i *IntegrationService) updateContent() (result *vault.UpdateResponse, err error) {

@@ -85,7 +85,7 @@ func main() {
 ## Contributing
 
 If you feel like contributing, great! Just fork the repo, make your improvements, and submit a pull request. When adding features, please ensure behavior remains compatible with the Ruby chef-vault gem unless explicitly documented otherwise.
-Please also ensure all new features and bug fixes are covered by a unit test. Bonus points if you are able toextend coverage into the `servertest` integration suite. Ensure code passes the lint standards provided by `golangci-lint`.
+Please also ensure all new features and bug fixes are covered by a unit test. Bonus points if you are able to extend coverage into the `servertest` integration suite. Ensure code passes the lint standards provided by `golangci-lint`.
 
 ## Copyright
 

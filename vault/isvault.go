@@ -11,5 +11,5 @@ func (s *Service) IsVault(vaultName string, vaultItem string) (bool, error) {
 		return false, err
 	}
 
-	return itemType == ItemTypeVault, nil
+	return itemType == DataBagItemTypeVault, nil
 }

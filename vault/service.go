@@ -73,8 +73,22 @@ func (s *Service) bagItemIsEncrypted(vaultName, vaultItem string) (bool, error) 
 		return false, err
 	}
 
-	_, ok := dbm["encrypted_data"]
-	return ok, nil
+	for key, dbv := range dbm {
+		if key == "id" {
+			continue
+		}
+
+		dbim, ok := dbv.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		if _, ok := dbim["encrypted_data"]; ok {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // getClientsFromSearch returns the names of clients matching the search query.

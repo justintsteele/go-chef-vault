@@ -56,6 +56,9 @@ func RunVault(cfg Config) error {
 		service := vault.NewService(client)
 		isvc := NewIntegrationService(service)
 
+		// Delete our data bag fixtures
+		Must(isvc.deleteDataBags())
+
 		// Delete our new node and client so we can re-run the tests without panics
 		Must(isvc.deleteClients(newNodeName))
 		Must(isvc.deleteClients(fakeNodeName))
@@ -67,6 +70,10 @@ func RunVault(cfg Config) error {
 
 	runStep("Create Vault", func() (any, error) {
 		return isvc.createVault()
+	})
+
+	runStep("Is Vault?", func() (any, error) {
+		return isvc.isVault()
 	})
 
 	runStep("Get Item", func() (any, error) {

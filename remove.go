@@ -91,23 +91,18 @@ func (s *Service) resolveRemoveContent(p *Payload) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	dbi, err := item.DataBagItemMap(current)
 	if err != nil {
 		return nil, err
 	}
 
-	kept := make(map[string]any)
-
-	for key, value := range dbi {
-		if removeVal, ok := p.Content[key]; ok {
-			if pruned, keep := pruneData(value, removeVal); keep {
-				kept[key] = pruned
-			}
-		} else {
-			kept[key] = value
-		}
+	pruned, ok := pruneData(dbi, p.Content)
+	if !ok {
+		return map[string]any{}, nil
 	}
-	return kept, nil
+
+	return pruned.(map[string]any), nil
 }
 
 // resolveActors returns the remaining actors after requested removals.

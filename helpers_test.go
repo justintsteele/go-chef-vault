@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-chef/chef"
-	item2 "github.com/justintsteele/go-chef-vault/item"
-	item_keys2 "github.com/justintsteele/go-chef-vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 func setupStubs(t *testing.T) {
@@ -26,34 +26,34 @@ func setupStubs(t *testing.T) {
 
 func stubVaultItemKeyEncrypt(t *testing.T) {
 	t.Helper()
-	orig := item_keys2.DefaultVaultItemKeyEncrypt
-	item_keys2.DefaultVaultItemKeyEncrypt = func(_ *item_keys2.VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
+	orig := item_keys.DefaultVaultItemKeyEncrypt
+	item_keys.DefaultVaultItemKeyEncrypt = func(_ *item_keys.VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
 		for actor, key := range actors {
 			out[actor] = fmt.Sprintf("ENCRYPTED %s", key.PublicKey)
 		}
 		return nil
 	}
 
-	t.Cleanup(func() { item_keys2.DefaultVaultItemKeyEncrypt = orig })
+	t.Cleanup(func() { item_keys.DefaultVaultItemKeyEncrypt = orig })
 }
 
 func stubDeriveAESKey(t *testing.T) {
 	t.Helper()
 
-	orig := item_keys2.DeriveAESKey
-	item_keys2.DeriveAESKey = func(_ string, _ *rsa.PrivateKey) ([]byte, error) {
+	orig := item_keys.DeriveAESKey
+	item_keys.DeriveAESKey = func(_ string, _ *rsa.PrivateKey) ([]byte, error) {
 		return make([]byte, 32), nil
 	}
 
-	t.Cleanup(func() { item_keys2.DeriveAESKey = orig })
+	t.Cleanup(func() { item_keys.DeriveAESKey = orig })
 }
 
 func stubVaultItemKeyDecrypt(t *testing.T) {
 	t.Helper()
 
 	// stub decrypt
-	origDecrypt := item2.DefaultVaultItemDecrypt
-	item2.DefaultVaultItemDecrypt = func(_ *item2.VaultItem, _ []byte) (map[string]interface{}, error) {
+	origDecrypt := item.DefaultVaultItemDecrypt
+	item.DefaultVaultItemDecrypt = func(_ *item.VaultItem, _ []byte) (map[string]interface{}, error) {
 		return map[string]interface{}{
 			"foo": "fake-foo-value",
 			"bar": "fake-bar-value",
@@ -66,7 +66,7 @@ func stubVaultItemKeyDecrypt(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		item2.DefaultVaultItemDecrypt = origDecrypt
+		item.DefaultVaultItemDecrypt = origDecrypt
 		service.authorize = origAuthorize
 	})
 }

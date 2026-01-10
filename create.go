@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item"
-	item_keys2 "github.com/justintsteele/go-chef-vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 type CreateResponse struct {
@@ -39,12 +39,12 @@ func (s *Service) Create(payload *Payload) (result *CreateResponse, err error) {
 		},
 	}
 
-	secret, err := item_keys2.GenSecret(32)
+	secret, err := item_keys.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}
 
-	keysModeState := &item_keys2.KeysModeState{
+	keysModeState := &item_keys.KeysModeState{
 		Current: payload.effectiveKeysMode(),
 		Desired: payload.effectiveKeysMode(),
 	}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item"
-	item_keys2 "github.com/justintsteele/go-chef-vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 // GetItem returns the decrypted items in the vault.
@@ -39,13 +39,13 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 	var actorKey string
 	keyMode := keysMap["mode"]
 	switch keyMode {
-	case string(item_keys2.KeysModeDefault):
+	case string(item_keys.KeysModeDefault):
 		publicKey, ok := keysMap[actor]
 		if !ok {
 			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
 		}
 		actorKey = publicKey.(string)
-	case string(item_keys2.KeysModeSparse):
+	case string(item_keys.KeysModeSparse):
 		rawSparseKey, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_key_"+actor)
 		if err != nil {
 			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
@@ -57,7 +57,7 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		actorKey = sparseKeyMap[actor].(string)
 	}
 
-	aesKey, err := item_keys2.DeriveAESKeyForVault(
+	aesKey, err := item_keys.DeriveAESKeyForVault(
 		actorKey,
 		s.Client.Auth.PrivateKey,
 	)

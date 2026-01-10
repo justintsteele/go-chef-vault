@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/justintsteele/go-chef-vault/item"
-	item_keys2 "github.com/justintsteele/go-chef-vault/item_keys"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 // UpdateResponse represents the structure of the response from an Update operation.
@@ -32,7 +32,7 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 
 	payload.mergeKeyActors(keyState)
 
-	finalQuery := item_keys2.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
+	finalQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
 
 	mode, modeState := payload.resolveKeysMode(keyState.Mode)
 	keyState.Mode = mode
@@ -73,8 +73,8 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 }
 
 // updateVault performs the shared re-encryption logic used by Update and Refresh.
-func (s *Service) updateVault(payload *Payload, modeState *item_keys2.KeysModeState) (*item_keys2.VaultItemKeysResult, error) {
-	secret, err := item_keys2.GenSecret(32)
+func (s *Service) updateVault(payload *Payload, modeState *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error) {
+	secret, err := item_keys.GenSecret(32)
 	if err != nil {
 		return nil, err
 	}

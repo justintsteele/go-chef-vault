@@ -20,41 +20,14 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		return nil, err
 	}
 
-	rawKeys, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_keys")
-	if err != nil {
-		return nil, err
-	}
-
 	itemMap, err := item.DataBagItemMap(rawItem)
 	if err != nil {
 		return nil, err
 	}
 
-	keysMap, err := item.DataBagItemMap(rawKeys)
+	actorKey, err := s.loadActorKey(vaultName, vaultItem)
 	if err != nil {
 		return nil, err
-	}
-
-	var actor = s.Client.Auth.ClientName
-	var actorKey string
-	keyMode := keysMap["mode"]
-	switch keyMode {
-	case string(item_keys.KeysModeDefault):
-		publicKey, ok := keysMap[actor]
-		if !ok {
-			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
-		}
-		actorKey = publicKey.(string)
-	case string(item_keys.KeysModeSparse):
-		rawSparseKey, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_key_"+actor)
-		if err != nil {
-			return nil, fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
-		}
-		sparseKeyMap, err := item.DataBagItemMap(rawSparseKey)
-		if err != nil {
-			return nil, err
-		}
-		actorKey = sparseKeyMap[actor].(string)
 	}
 
 	aesKey, err := item_keys.DeriveAESKeyForVault(

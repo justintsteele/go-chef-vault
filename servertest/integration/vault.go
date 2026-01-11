@@ -61,6 +61,7 @@ func RunVault(cfg Config) error {
 
 		// Delete our new node and client so we can re-run the tests without panics
 		Must(isvc.deleteClients(newNodeName))
+		Must(isvc.deleteClients(newNodeName + "0"))
 		Must(isvc.deleteClients(fakeNodeName))
 	}()
 

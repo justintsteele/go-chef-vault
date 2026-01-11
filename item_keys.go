@@ -3,6 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/cheferr"
@@ -128,19 +129,22 @@ func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.K
 		}
 	}
 
+	if err := s.writeKeys(payload, mode, keys, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *Service) writeKeys(payload *Payload, mode item_keys.KeysMode, keys map[string]any, result *item_keys.VaultItemKeysResult) error {
 	switch mode {
 	case item_keys.KeysModeDefault:
-		if err := s.buildDefaultKeys(payload, &keys, result); err != nil {
-			return nil, err
-		}
+		return s.buildDefaultKeys(payload, &keys, result)
 	case item_keys.KeysModeSparse:
-		if err := s.buildSparseKeys(payload, keys, result); err != nil {
-			return nil, err
-		}
+		return s.buildSparseKeys(payload, keys, result)
 	default:
-		return result, fmt.Errorf("unsupported key format: %s", mode)
+		return fmt.Errorf("unsupported key format: %s", mode)
 	}
-	return result, nil
 }
 
 // buildKeys collects actor public keys and builds the encrypted vault keys item
@@ -172,9 +176,7 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 	finalClients := item_keys.MapKeys(clients)
 
 	vik := &item_keys.VaultItemKeys{
-		Id:          payload.VaultItemName + "_keys",
 		Admins:      payload.Admins,
-		Clients:     finalClients,
 		SearchQuery: item_keys.EffectiveSearchQuery(payload.SearchQuery),
 		Keys:        make(map[string]string),
 	}
@@ -192,10 +194,10 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 		return nil, err
 	}
 
-	return vik.BuildKeysItem(), nil
+	return vik.BuildKeysItem(payload.VaultItemName+"_keys", finalClients), nil
 }
 
-// collectAdmins collects the public keys for the given admins
+// collectAdmins collects the public keys for the given admins.
 func (s *Service) collectAdmins(names []string, admins map[string]chef.AccessKey) {
 	for _, name := range names {
 		key, err := s.Client.Users.GetKey(name, "default")
@@ -207,19 +209,24 @@ func (s *Service) collectAdmins(names []string, admins map[string]chef.AccessKey
 	}
 }
 
-// collectClients collects the public keys for the given clients
+// collectClients collects the public keys for the given clients.
 func (s *Service) collectClients(names []string, clients map[string]chef.AccessKey) {
 	for _, name := range names {
-		key, err := s.Client.Clients.GetKey(name, "default")
+		key, err := s.clientPublicKey(name)
 		if err != nil {
-			fmt.Printf("client %q has no public key, skipping: %s\n", name, err)
+			log.Printf("client %q has no public key, skipping: %v", name, err)
 			continue
 		}
 		clients[name] = key
 	}
 }
 
-// resolveUpdateContent merges the payload content with the current content, respecting the clean flag
+// clientPublicKey retrieves the public key for a specified actor.
+func (s *Service) clientPublicKey(actor string) (chef.AccessKey, error) {
+	return s.Client.Clients.GetKey(actor, "default")
+}
+
+// resolveUpdateContent merges the payload content with the current content, respecting the clean flag.
 func (s *Service) resolveUpdateContent(p *Payload) (map[string]any, error) {
 	current, err := s.GetItem(p.VaultName, p.VaultItemName)
 	if err != nil {

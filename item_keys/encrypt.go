@@ -16,7 +16,7 @@ func (k *VaultItemKeys) Encrypt(actors map[string]chef.AccessKey, secret []byte,
 // encryptKeys encrypts the public key of each actor in the vault.
 func (k *VaultItemKeys) encryptKeys(actors map[string]chef.AccessKey, secret []byte, out map[string]string) error {
 	for actor, key := range actors {
-		sharedSecret, err := encryptSharedSecret(key.PublicKey, secret)
+		sharedSecret, err := EncryptActorSharedSecret(key.PublicKey, secret)
 		if err != nil {
 			return err
 		}

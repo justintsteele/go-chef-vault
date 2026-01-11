@@ -9,8 +9,14 @@ import (
 	"errors"
 )
 
-// encryptSharedSecret encrypts a shared secret using an actor's RSA public key.
-func encryptSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
+var EncryptSharedSecret = EncryptShared
+
+func EncryptActorSharedSecret(publicKeyPEM string, secret []byte) (string, error) {
+	return EncryptSharedSecret(publicKeyPEM, secret)
+}
+
+// EncryptShared encrypts a shared secret using an actor's RSA public key.
+func EncryptShared(publicKeyPEM string, secret []byte) (string, error) {
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
 		return "", errors.New("failed to parse PEM block containing the public key")

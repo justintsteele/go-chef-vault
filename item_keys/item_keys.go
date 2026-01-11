@@ -50,12 +50,13 @@ type VaultItemKeysResult struct {
 }
 
 // BuildKeysItem returns the data bag item used to persist vault keys.
-func (k *VaultItemKeys) BuildKeysItem() map[string]any {
+func (k *VaultItemKeys) BuildKeysItem(id string, clients []string) map[string]any {
 	item := map[string]any{
-		"id":           k.Id,
+		"id":           id,
 		"admins":       k.Admins,
-		"clients":      k.Clients,
+		"clients":      clients,
 		"search_query": k.SearchQuery,
+		"mode":         k.Mode,
 	}
 
 	for actor, cipher := range k.Keys {
@@ -91,6 +92,22 @@ func MergeClients(a []string, b []string) []string {
 	}
 
 	sort.Strings(out) // optional but nice
+	return out
+}
+
+// DiffLists returns the elements in a that are not present in b (set difference: a - b).
+func DiffLists(a, b []string) []string {
+	bset := make(map[string]struct{}, len(b))
+	for _, v := range b {
+		bset[v] = struct{}{}
+	}
+
+	out := make([]string, 0)
+	for _, v := range a {
+		if _, ok := bset[v]; !ok {
+			out = append(out, v)
+		}
+	}
 	return out
 }
 

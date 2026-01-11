@@ -60,22 +60,46 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 		return refreshResponse, nil
 	}
 
-	refreshContent, err := s.resolveUpdateContent(payload)
+	currentClients := keyState.Clients
+	desiredClients := normalizedClients
+
+	clientsAdded := item_keys.DiffLists(desiredClients, currentClients)
+
+	var clientsRemoved []string
+	if payload.Clean {
+		clientsRemoved = item_keys.DiffLists(currentClients, desiredClients)
+	}
+
+	for _, client := range clientsRemoved {
+		delete(keyState.Keys, client)
+	}
+
+	sharedSecret, err := s.loadSharedSecret(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshPayload.Admins = keyState.Admins
-	refreshPayload.Clients = normalizedClients
-	refreshPayload.Content = refreshContent
-	refreshPayload.KeysMode = &keyState.Mode
+	for _, actor := range clientsAdded {
+		pub, err := s.clientPublicKey(actor)
+		if err != nil {
+			return nil, err
+		}
 
-	modeState := &item_keys.KeysModeState{
-		Current: keyState.Mode,
-		Desired: keyState.Mode,
+		enc, err := item_keys.EncryptActorSharedSecret(pub.PublicKey, sharedSecret)
+		if err != nil {
+			return nil, err
+		}
+
+		keyState.Keys[actor] = enc
 	}
-	keysResult, err := s.updateVault(refreshPayload, modeState)
-	if err != nil {
+
+	keys := keyState.BuildKeysItem(
+		payload.VaultItemName+"_keys",
+		normalizedClients,
+	)
+
+	result := &item_keys.VaultItemKeysResult{}
+	if err := s.writeKeys(payload, keyState.Mode, keys, result); err != nil {
 		return nil, err
 	}
 
@@ -83,7 +107,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 		Response: Response{
 			URI: s.vaultURL(payload.VaultName),
 		},
-		KeysURIs: keysResult.URIs,
+		KeysURIs: result.URIs,
 	}, nil
 }
 

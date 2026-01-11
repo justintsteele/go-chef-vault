@@ -12,6 +12,9 @@ func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error)
 		SkipReencrypt: true,
 	}
 
+	// add a new node and client that does not match search string.
+	Must(i.createClients(newNodeName + "0"))
+
 	result, err = i.Service.Refresh(pl)
 	if err != nil {
 		return

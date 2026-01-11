@@ -18,6 +18,8 @@ func setupStubs(t *testing.T) {
 	t.Cleanup(teardown)
 
 	stubDeriveAESKey(t)
+	stubDecryptSharedSecret(t)
+	stubEncryptSharedSecret(t)
 	stubVaultItemKeyDecrypt(t)
 	stubVaultItemKeyEncrypt(t)
 	stubMuxGetItem(t)
@@ -48,6 +50,24 @@ func stubDeriveAESKey(t *testing.T) {
 	t.Cleanup(func() { item_keys.DeriveAESKey = orig })
 }
 
+func stubDecryptSharedSecret(t *testing.T) {
+	t.Helper()
+
+	orig := item_keys.DecryptSharedSecret
+	item_keys.DecryptSharedSecret = func(_ string, _ *rsa.PrivateKey) ([]byte, error) { return make([]byte, 32), nil }
+
+	t.Cleanup(func() { item_keys.DecryptSharedSecret = orig })
+}
+
+func stubEncryptSharedSecret(t *testing.T) {
+	t.Helper()
+
+	orig := item_keys.EncryptSharedSecret
+	item_keys.EncryptSharedSecret = func(_ string, _ []byte) (string, error) { return "encrypted-actor-key", nil }
+
+	t.Cleanup(func() { item_keys.EncryptSharedSecret = orig })
+}
+
 func stubVaultItemKeyDecrypt(t *testing.T) {
 	t.Helper()
 
@@ -60,14 +80,8 @@ func stubVaultItemKeyDecrypt(t *testing.T) {
 		}, nil
 	}
 
-	origAuthorize := service.authorize
-	service.authorize = func(string) ([]byte, error) {
-		return []byte("fake-aes-key"), nil
-	}
-
 	t.Cleanup(func() {
 		item.DefaultVaultItemDecrypt = origDecrypt
-		service.authorize = origAuthorize
 	})
 }
 

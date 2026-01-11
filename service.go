@@ -2,6 +2,7 @@ package vault
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"path"
 	"strings"
@@ -13,8 +14,7 @@ import (
 
 // Service provides Vault operations backed by a Chef Server client.
 type Service struct {
-	Client    *chef.Client
-	authorize func(key string) ([]byte, error)
+	Client *chef.Client
 }
 
 // Response represents the basic structure of a response from a Vault operation.
@@ -124,4 +124,57 @@ func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]json.
 	}
 
 	return rows, nil
+}
+
+func (s *Service) loadActorKey(vaultName, vaultItem string) (string, error) {
+	rawKeys, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_keys")
+	if err != nil {
+		return "", err
+	}
+
+	keysMap, err := item.DataBagItemMap(rawKeys)
+	if err != nil {
+		return "", err
+	}
+
+	var actor = s.Client.Auth.ClientName
+	var actorKey interface{}
+	actorKey, ok := keysMap[actor]
+	if !ok {
+		// not in default key, trying sparse keys
+		rawSparseKey, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_key_"+actor)
+		if err != nil {
+			return "", fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
+		}
+		sparseKeyMap, err := item.DataBagItemMap(rawSparseKey)
+		if err != nil {
+			return "", err
+		}
+
+		actorKey, ok = sparseKeyMap[actor]
+		if !ok {
+			return "", fmt.Errorf("%s/%s is not encrypted with your public key", vaultName, vaultItem)
+		}
+
+	}
+	keyStr, ok := actorKey.(string)
+	if !ok {
+		return "", fmt.Errorf("%s/%s contains an invalid key format for actor %q", vaultName, vaultItem, actor)
+	}
+	return keyStr, nil
+}
+
+func (s *Service) loadSharedSecret(payload *Payload) ([]byte, error) {
+	actorKey, err := s.loadActorKey(payload.VaultName, payload.VaultItemName)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := item_keys.DecryptActorSharedSecret(actorKey, s.Client.Auth.PrivateKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to decrypt shared secret with available credentials")
+	}
+
+	return secret, nil
 }

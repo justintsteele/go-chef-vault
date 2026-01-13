@@ -3,30 +3,20 @@ package item_keys
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-
-	"github.com/justintsteele/go-chef-vault/item"
+	"strings"
 )
 
 // DeriveAESKey derives the AES key used to decrypt vault item data,
-// delegating to DeriveAESKey to allow test overrides.
 func DeriveAESKey(actorKey string, privateKey *rsa.PrivateKey) ([]byte, error) {
-	sharedSecret, err := DecryptSharedSecret(actorKey, privateKey)
-	if err != nil {
-		return nil, err
-	}
-	sum := sha256.Sum256(sharedSecret)
-	aesKey := sum[:]
-
-	return aesKey, nil
+	return DecryptSharedSecret(actorKey, privateKey)
 }
 
 // DecryptSharedSecret derives the shared secret from a private key.
 func DecryptSharedSecret(actorKey string, privateKey *rsa.PrivateKey) ([]byte, error) {
 	encKey, err := base64.StdEncoding.DecodeString(
-		item.CleanB64(actorKey),
+		cleanB64(actorKey),
 	)
 	if err != nil {
 		return nil, err
@@ -42,4 +32,16 @@ func DecryptSharedSecret(actorKey string, privateKey *rsa.PrivateKey) ([]byte, e
 	}
 
 	return secret, nil
+}
+
+// cleanB64 removes extraneous whitespace from a base64-encoded string.
+func cleanB64(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\n', '\r', '\t':
+			return -1
+		default:
+			return r
+		}
+	}, s)
 }

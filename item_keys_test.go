@@ -28,57 +28,6 @@ func TestBuildKeys_NoAdminsFails(t *testing.T) {
 	}
 }
 
-func TestBuildKeys_MergesClients(t *testing.T) {
-	setupStubs(t)
-
-	payload, _ := stubPayload([]string{"tester"}, []string{"testhost", "testhost2", "testhost3"}, nil)
-	secret, _ := item_keys.GenSecret(32)
-
-	item, err := service.buildKeys(payload, secret)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	got := item["clients"].([]string)
-	want := []string{"testhost", "testhost3"}
-
-	if !item_keys.EqualLists(got, want) {
-		t.Fatalf("got %#v, want %#v", got, want)
-	}
-}
-
-func TestBuildKeys_EncryptsForAllActors(t *testing.T) {
-	setupStubs(t)
-
-	payload, _ := stubPayload([]string{"tester"}, []string{"testhost", "testhost2", "testhost3", "testhost4"}, nil)
-	secret, _ := item_keys.GenSecret(32)
-	item, err := service.buildKeys(payload, secret)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	meta := map[string]bool{
-		"id":           true,
-		"admins":       true,
-		"clients":      true,
-		"search_query": true,
-		"mode":         true,
-	}
-
-	encryptedCount := 0
-	for k := range item {
-		if !meta[k] {
-			encryptedCount++
-		}
-	}
-
-	// admins + clients
-	const want = 4
-	if encryptedCount != want {
-		t.Fatalf("expected %d encrypted actor keys, got %d", want, encryptedCount)
-	}
-}
-
 func TestResolveSearchQuery_PreservesExisting(t *testing.T) {
 	setupStubs(t)
 

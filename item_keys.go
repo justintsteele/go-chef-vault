@@ -3,11 +3,9 @@ package vault
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/cheferr"
-	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
@@ -202,7 +200,7 @@ func (s *Service) collectAdmins(names []string, admins map[string]chef.AccessKey
 	for _, name := range names {
 		key, err := s.Client.Users.GetKey(name, "default")
 		if err != nil {
-			fmt.Printf("admin %q has no public key, skipping: %s\n", name, err)
+			// misses here should be non-fatal so that we continue to get the keys for the actors that exist.
 			continue
 		}
 		admins[name] = key
@@ -214,7 +212,7 @@ func (s *Service) collectClients(names []string, clients map[string]chef.AccessK
 	for _, name := range names {
 		key, err := s.clientPublicKey(name)
 		if err != nil {
-			log.Printf("client %q has no public key, skipping: %v", name, err)
+			// misses here should be non-fatal so that we continue to get the keys for the actors that exist.
 			continue
 		}
 		clients[name] = key
@@ -224,22 +222,4 @@ func (s *Service) collectClients(names []string, clients map[string]chef.AccessK
 // clientPublicKey retrieves the public key for a specified actor.
 func (s *Service) clientPublicKey(actor string) (chef.AccessKey, error) {
 	return s.Client.Clients.GetKey(actor, "default")
-}
-
-// resolveUpdateContent merges the payload content with the current content, respecting the clean flag.
-func (s *Service) resolveUpdateContent(p *Payload) (map[string]any, error) {
-	current, err := s.GetItem(p.VaultName, p.VaultItemName)
-	if err != nil {
-		return nil, err
-	}
-
-	if p.Content == nil {
-		return item.DataBagItemMap(current)
-	}
-
-	merged := make(map[string]any, len(p.Content))
-	for k, v := range p.Content {
-		merged[k] = v
-	}
-	return merged, nil
 }

@@ -22,12 +22,16 @@ type Response struct {
 	URI string `json:"uri"`
 }
 
+// clientSearchResult represents a single row returned from a Chef partial client search.
+type clientSearchResult struct {
+	Name string `json:"name"`
+}
+
 // NewService returns a Service configured with the given Chef client.
 func NewService(client *chef.Client) *Service {
-	vs := &Service{
+	return &Service{
 		Client: client,
 	}
-	return vs
 }
 
 // vaultURL constructs the canonical URL for a vault resource.
@@ -94,7 +98,7 @@ func (s *Service) bagItemIsEncrypted(vaultName, vaultItem string) (bool, error) 
 // getClientsFromSearch returns the names of clients matching the search query.
 func (s *Service) getClientsFromSearch(payload *Payload) ([]string, error) {
 	if payload.SearchQuery == nil {
-		return []string{}, nil
+		return nil, nil
 	}
 
 	plan := item_keys.BuildClientSearchPlan(payload.SearchQuery)
@@ -104,11 +108,17 @@ func (s *Service) getClientsFromSearch(payload *Payload) ([]string, error) {
 		return nil, err
 	}
 
-	return item_keys.ExtractClients(rows)
+	clients := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if r.Name != "" {
+			clients = append(clients, r.Name)
+		}
+	}
+	return clients, nil
 }
 
 // executeClientSearch executes a client search plan against the Chef Server and returns the raw results.
-func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]json.RawMessage, error) {
+func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]clientSearchResult, error) {
 	if plan == nil {
 		return nil, nil
 	}
@@ -118,9 +128,13 @@ func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]json.
 		return nil, err
 	}
 
-	rows := make([]json.RawMessage, 0, len(result.Rows))
+	rows := make([]clientSearchResult, 0, len(result.Rows))
 	for _, row := range result.Rows {
-		rows = append(rows, row.Data)
+		var r clientSearchResult
+		if err := json.Unmarshal(row.Data, &r); err != nil {
+			return nil, err
+		}
+		rows = append(rows, r)
 	}
 
 	return rows, nil
@@ -170,7 +184,7 @@ func (s *Service) loadSharedSecret(payload *Payload) ([]byte, error) {
 		return nil, err
 	}
 
-	secret, err := item_keys.DecryptActorSharedSecret(actorKey, s.Client.Auth.PrivateKey)
+	secret, err := item_keys.DecryptSharedSecret(actorKey, s.Client.Auth.PrivateKey)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to decrypt shared secret with available credentials")

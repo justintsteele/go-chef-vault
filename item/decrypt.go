@@ -8,20 +8,8 @@ import (
 	"strings"
 )
 
-// DefaultVaultItemDecrypt is a function variable used to allow tests to stub vault item decryption.
-var DefaultVaultItemDecrypt VaultItemDecryptor = (*VaultItem).decryptItems
-
-// Decrypt decrypts the vault item data using the provided AES key,
-// delegating to the configured decryptor to allow test overrides.
+// Decrypt performs AES-GCM decryption of all encrypted values in the vault item.
 func (i *VaultItem) Decrypt(aesKey []byte) (map[string]interface{}, error) {
-	if i.decryptor == nil {
-		i.decryptor = DefaultVaultItemDecrypt
-	}
-	return i.decryptor(i, aesKey)
-}
-
-// decryptItems performs AES-GCM decryption of all encrypted values in the vault item.
-func (i *VaultItem) decryptItems(aesKey []byte) (map[string]interface{}, error) {
 	block, err := aes.NewCipher(aesKey)
 	if err != nil {
 		return nil, err

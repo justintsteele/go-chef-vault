@@ -13,16 +13,9 @@ type EncryptedValue = chefcrypto.EncryptedDataBagItemV3
 
 // VaultItem represents the encrypted data portion of a vault item.
 type VaultItem struct {
-	Id        string                    `json:"id"`
-	Items     map[string]EncryptedValue `json:"-"`
-	decryptor VaultItemDecryptor
+	Id    string                    `json:"id"`
+	Items map[string]EncryptedValue `json:"-"`
 }
-
-// VaultItemDecryptor defines the function used to decrypt vault item data.
-type VaultItemDecryptor func(
-	v *VaultItem,
-	aesKey []byte,
-) (map[string]interface{}, error)
 
 // DataBagItemMap converts a Chef DataBagItem into a map for processing decrypted vault content.
 func DataBagItemMap(rawItem chef.DataBagItem) (map[string]interface{}, error) {

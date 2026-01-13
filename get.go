@@ -30,7 +30,7 @@ func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error)
 		return nil, err
 	}
 
-	aesKey, err := item_keys.DeriveAESKeyForVault(
+	aesKey, err := item_keys.DeriveAESKey(
 		actorKey,
 		s.Client.Auth.PrivateKey,
 	)

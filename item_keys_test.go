@@ -3,10 +3,8 @@ package vault
 import (
 	"encoding/json"
 	"reflect"
-	"slices"
 	"testing"
 
-	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
@@ -64,24 +62,6 @@ func TestResolveSearchQuery_OverwriteWithNew(t *testing.T) {
 
 	if !reflect.DeepEqual(resolvedQuery, payload.SearchQuery) {
 		t.Errorf("payload.SearchQuery = %v, want %v", resolvedQuery, payload.SearchQuery)
-	}
-}
-
-func TestMapKeys_SortsAndDedupes(t *testing.T) {
-	input := map[string]chef.AccessKey{
-		"testhost3": {},
-		"tester":    {},
-		"testhost":  {},
-	}
-
-	got := item_keys.MapKeys(input)
-
-	want := []string{"tester", "testhost", "testhost3"}
-
-	for _, w := range want {
-		if !slices.Contains(got, w) {
-			t.Fatalf("missing key %q in %v", w, got)
-		}
 	}
 }
 

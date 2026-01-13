@@ -174,6 +174,7 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 	finalClients := item_keys.MapKeys(clients)
 
 	vik := &item_keys.VaultItemKeys{
+		Id:          payload.VaultItemName + "_keys",
 		Admins:      payload.Admins,
 		SearchQuery: item_keys.EffectiveSearchQuery(payload.SearchQuery),
 		Keys:        make(map[string]string),
@@ -192,7 +193,7 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 		return nil, err
 	}
 
-	return vik.BuildKeysItem(payload.VaultItemName+"_keys", finalClients), nil
+	return vik.BuildKeysItem(finalClients), nil
 }
 
 // collectAdmins collects the public keys for the given admins.

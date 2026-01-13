@@ -38,9 +38,9 @@ type VaultItemKeysResult struct {
 }
 
 // BuildKeysItem returns the data bag item used to persist vault keys.
-func (k *VaultItemKeys) BuildKeysItem(id string, clients []string) map[string]any {
+func (k *VaultItemKeys) BuildKeysItem(clients []string) map[string]any {
 	item := map[string]any{
-		"id":           id,
+		"id":           k.Id,
 		"admins":       k.Admins,
 		"clients":      clients,
 		"search_query": k.SearchQuery,

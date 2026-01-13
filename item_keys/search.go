@@ -1,7 +1,5 @@
 package item_keys
 
-import "encoding/json"
-
 // ClientSearchPlan represents the payload sent to the Chef API search endpoint for node queries.
 type ClientSearchPlan struct {
 	Index  string
@@ -25,21 +23,50 @@ func BuildClientSearchPlan(q *string) *ClientSearchPlan {
 	}
 }
 
-// ExtractClients extracts node names from the results of a Chef partial search query.
-func ExtractClients(rows []json.RawMessage) ([]string, error) {
-	type node struct {
-		Name string `json:"name"`
+// NormalizeSearchQuery converts a schemaless search query value into a typed string or nil.
+func NormalizeSearchQuery(v any) *string {
+	if v == nil {
+		return nil
 	}
 
-	out := make([]string, 0, len(rows))
-	for _, r := range rows {
-		var n node
-		if err := json.Unmarshal(r, &n); err != nil {
-			return nil, err
+	switch q := v.(type) {
+	case *string:
+		if q == nil || *q == "" {
+			return nil
 		}
-		if n.Name != "" {
-			out = append(out, n.Name)
+		return q
+
+	case string:
+		if q == "" {
+			return nil
 		}
+		return &q
+
+	default:
+		return nil
 	}
-	return out, nil
+}
+
+// ResolveSearchQuery applies Chef-Vault precedence rules for search_query values.
+// If a search_query is not provided, Chef-Vault stores it as an empty array;
+// otherwise it is stored as a string.
+func ResolveSearchQuery(keyState interface{}, request *string) *string {
+	if request != nil {
+		return request
+	}
+
+	if ks, ok := keyState.(string); ok {
+		return &ks
+	}
+
+	return nil
+}
+
+// EffectiveSearchQuery converts a normalized search query into the form expected by Chef-Vault,
+// matching the behavior of ChefVault::ItemKeys initialization.
+func EffectiveSearchQuery(q *string) interface{} {
+	if q == nil {
+		return []string{}
+	}
+	return *q
 }

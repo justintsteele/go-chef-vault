@@ -99,3 +99,41 @@ func (s *Service) updateVault(payload *Payload, modeState *item_keys.KeysModeSta
 
 	return keysResult, nil
 }
+
+// resolveUpdateContent merges the payload content with the current content.
+func (s *Service) resolveUpdateContent(p *Payload) (map[string]interface{}, error) {
+	current, err := s.GetItem(p.VaultName, p.VaultItemName)
+	if err != nil {
+		return nil, err
+	}
+
+	currMap, err := item.DataBagItemMap(current)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.Content == nil {
+		return currMap, nil
+	}
+
+	merged, err := resolveContent(currMap, p.Content)
+	if err != nil {
+		return nil, err
+	}
+	return merged, nil
+}
+
+// resolveContent merges the current contents to the vault with the contents provided by the payload.
+func resolveContent(current, requested map[string]interface{}) (map[string]interface{}, error) {
+	out := make(map[string]interface{}, len(current)+len(requested))
+
+	for k, v := range current {
+		out[k] = v
+	}
+
+	for k, v := range requested {
+		out[k] = v
+	}
+
+	return out, nil
+}

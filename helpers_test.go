@@ -1,14 +1,9 @@
 package vault
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"testing"
-
-	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/item"
-	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 func setupStubs(t *testing.T) {
@@ -17,72 +12,8 @@ func setupStubs(t *testing.T) {
 	setup(t)
 	t.Cleanup(teardown)
 
-	stubDeriveAESKey(t)
-	stubDecryptSharedSecret(t)
-	stubEncryptSharedSecret(t)
-	stubVaultItemKeyDecrypt(t)
-	stubVaultItemKeyEncrypt(t)
 	stubMuxGetItem(t)
 	stubMuxCreate(t)
-}
-
-func stubVaultItemKeyEncrypt(t *testing.T) {
-	t.Helper()
-	orig := item_keys.DefaultVaultItemKeyEncrypt
-	item_keys.DefaultVaultItemKeyEncrypt = func(_ *item_keys.VaultItemKeys, actors map[string]chef.AccessKey, _ []byte, out map[string]string) error {
-		for actor, key := range actors {
-			out[actor] = fmt.Sprintf("ENCRYPTED %s", key.PublicKey)
-		}
-		return nil
-	}
-
-	t.Cleanup(func() { item_keys.DefaultVaultItemKeyEncrypt = orig })
-}
-
-func stubDeriveAESKey(t *testing.T) {
-	t.Helper()
-
-	orig := item_keys.DeriveAESKey
-	item_keys.DeriveAESKey = func(_ string, _ *rsa.PrivateKey) ([]byte, error) {
-		return make([]byte, 32), nil
-	}
-
-	t.Cleanup(func() { item_keys.DeriveAESKey = orig })
-}
-
-func stubDecryptSharedSecret(t *testing.T) {
-	t.Helper()
-
-	orig := item_keys.DecryptSharedSecret
-	item_keys.DecryptSharedSecret = func(_ string, _ *rsa.PrivateKey) ([]byte, error) { return make([]byte, 32), nil }
-
-	t.Cleanup(func() { item_keys.DecryptSharedSecret = orig })
-}
-
-func stubEncryptSharedSecret(t *testing.T) {
-	t.Helper()
-
-	orig := item_keys.EncryptSharedSecret
-	item_keys.EncryptSharedSecret = func(_ string, _ []byte) (string, error) { return "encrypted-actor-key", nil }
-
-	t.Cleanup(func() { item_keys.EncryptSharedSecret = orig })
-}
-
-func stubVaultItemKeyDecrypt(t *testing.T) {
-	t.Helper()
-
-	// stub decrypt
-	origDecrypt := item.DefaultVaultItemDecrypt
-	item.DefaultVaultItemDecrypt = func(_ *item.VaultItem, _ []byte) (map[string]interface{}, error) {
-		return map[string]interface{}{
-			"foo": "fake-foo-value",
-			"bar": "fake-bar-value",
-		}, nil
-	}
-
-	t.Cleanup(func() {
-		item.DefaultVaultItemDecrypt = origDecrypt
-	})
 }
 
 func stubMuxCreate(t *testing.T) {

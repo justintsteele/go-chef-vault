@@ -42,7 +42,7 @@ func TestRefresh_SparseModeEncryptsPerClient(t *testing.T) {
 		keys map[string]any
 	}
 
-	deps := refreshDeps{
+	deps := refreshOps{
 		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
 			calls = append(calls, "loadKeys")
 			return &item_keys.VaultItemKeys{
@@ -80,7 +80,7 @@ func TestRefresh_SparseModeEncryptsPerClient(t *testing.T) {
 		},
 	}
 
-	_, err := service.refreshWithDeps(&Payload{}, deps)
+	_, err := service.refresh(&Payload{}, deps)
 	require.NoError(t, err)
 
 	require.Equal(t, []string{

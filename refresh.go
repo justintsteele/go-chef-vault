@@ -12,8 +12,8 @@ import (
 // RefreshResponse intentionally mirrors UpdateResponse for API parity.
 type RefreshResponse = UpdateResponse
 
-// refreshDeps defines the callable dependencies required to execute a Refresh request.
-type refreshDeps struct {
+// refreshOps defines the callable dependencies required to execute a Refresh request.
+type refreshOps struct {
 	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
 	getClientsFromSearch func(*Payload) ([]string, error)
 	loadSharedSecret     func(*Payload) ([]byte, error)
@@ -28,7 +28,7 @@ type refreshDeps struct {
 // References:
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_refresh.rb
 func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
-	deps := refreshDeps{
+	ops := refreshOps{
 		loadKeysCurrentState: s.loadKeysCurrentState,
 		getClientsFromSearch: s.getClientsFromSearch,
 		loadSharedSecret:     s.loadSharedSecret,
@@ -37,12 +37,12 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 		writeKeys:            s.writeKeys,
 	}
 
-	return s.refreshWithDeps(payload, deps)
+	return s.refresh(payload, ops)
 }
 
-// refreshWithDeps is the worker called by the public API with dependencies to complete the refresh request.
-func (s *Service) refreshWithDeps(payload *Payload, deps refreshDeps) (*RefreshResponse, error) {
-	keyState, err := deps.loadKeysCurrentState(payload)
+// refresh is the worker called by the public API with dependencies to complete the refresh request.
+func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, error) {
+	keyState, err := ops.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (s *Service) refreshWithDeps(payload *Payload, deps refreshDeps) (*RefreshR
 		SearchQuery:   searchQuery,
 	}
 
-	searchedClients, err := deps.getClientsFromSearch(refreshPayload)
+	searchedClients, err := ops.getClientsFromSearch(refreshPayload)
 	if err != nil {
 		return nil, err
 	}
@@ -108,18 +108,18 @@ func (s *Service) refreshWithDeps(payload *Payload, deps refreshDeps) (*RefreshR
 		delete(nextState.Keys, client)
 	}
 
-	sharedSecret, err := deps.loadSharedSecret(payload)
+	sharedSecret, err := ops.loadSharedSecret(payload)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, actor := range clientsAdded {
-		pub, err := deps.clientPublicKey(actor)
+		pub, err := ops.clientPublicKey(actor)
 		if err != nil {
 			return nil, err
 		}
 
-		enc, err := deps.encryptSharedSecret(pub.PublicKey, sharedSecret)
+		enc, err := ops.encryptSharedSecret(pub.PublicKey, sharedSecret)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +133,7 @@ func (s *Service) refreshWithDeps(payload *Payload, deps refreshDeps) (*RefreshR
 	)
 
 	result := &item_keys.VaultItemKeysResult{}
-	if err := deps.writeKeys(payload, nextState.Mode, keys, result); err != nil {
+	if err := ops.writeKeys(payload, nextState.Mode, keys, result); err != nil {
 		return nil, err
 	}
 

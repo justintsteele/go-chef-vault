@@ -11,7 +11,6 @@ func (i *IntegrationService) updateContent() (result *vault.UpdateResponse, err 
 	var raw map[string]interface{}
 	vaultItem := `{
 "baz": "baz-value-1", 
-"fuz": "fuz-value-2", 
 "foo": "foo-value-3",
 "fuz": {
 	  "faz": "faz-value-4",

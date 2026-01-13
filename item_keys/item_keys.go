@@ -2,9 +2,6 @@ package item_keys
 
 import (
 	"slices"
-	"sort"
-
-	"github.com/go-chef/chef"
 )
 
 // KeysMode defines how vault access keys are managed during create and update.
@@ -33,16 +30,7 @@ type VaultItemKeys struct {
 	SearchQuery interface{}       `json:"search_query"`
 	Mode        KeysMode          `json:"mode"`
 	Keys        map[string]string `json:"-"`
-	encryptor   VaultItemKeyEncryptor
 }
-
-// VaultItemKeyEncryptor defines the function used to encrypt actor keys.
-type VaultItemKeyEncryptor func(
-	v *VaultItemKeys,
-	actors map[string]chef.AccessKey,
-	secret []byte,
-	out map[string]string,
-) error
 
 // VaultItemKeysResult represents the response returned from key-related vault operations.
 type VaultItemKeysResult struct {
@@ -91,7 +79,6 @@ func MergeClients(a []string, b []string) []string {
 		out = append(out, c)
 	}
 
-	sort.Strings(out) // optional but nice
 	return out
 }
 

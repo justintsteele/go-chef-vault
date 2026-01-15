@@ -14,6 +14,7 @@ type RemoveDataResponse struct {
 	URI string `json:"uri"`
 }
 
+// removeOps defines the callable operations required to execute an Remove request.
 type removeOps struct {
 	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
 	getItem              func(string, string) (chef.DataBagItem, error)

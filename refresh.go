@@ -12,7 +12,7 @@ import (
 // RefreshResponse intentionally mirrors UpdateResponse for API parity.
 type RefreshResponse = UpdateResponse
 
-// refreshOps defines the callable dependencies required to execute a Refresh request.
+// refreshOps defines the callable operations required to execute a Refresh request.
 type refreshOps struct {
 	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
 	getClientsFromSearch func(*Payload) ([]string, error)
@@ -40,7 +40,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	return s.refresh(payload, ops)
 }
 
-// refresh is the worker called by the public API with dependencies to complete the refresh request.
+// refresh is the worker called by the public API with the operational methods to complete the refresh request.
 func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, error) {
 	keyState, err := ops.loadKeysCurrentState(payload)
 	if err != nil {
@@ -48,6 +48,7 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 	}
 
 	nextState := &item_keys.VaultItemKeys{
+		Id:          keyState.Id,
 		Mode:        keyState.Mode,
 		SearchQuery: keyState.SearchQuery,
 		Admins:      append([]string(nil), keyState.Admins...),
@@ -127,10 +128,7 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 		nextState.Keys[actor] = enc
 	}
 
-	keys := nextState.BuildKeysItem(
-		payload.VaultItemName+"_keys",
-		normalizedClients,
-	)
+	keys := nextState.BuildKeysItem(normalizedClients)
 
 	result := &item_keys.VaultItemKeysResult{}
 	if err := ops.writeKeys(payload, nextState.Mode, keys, result); err != nil {

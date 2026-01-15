@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestVaultsService_Delete(t *testing.T) {
+func TestService_Delete(t *testing.T) {
 	setup(t)
 	t.Cleanup(teardown)
 
@@ -31,7 +31,7 @@ func TestVaultsService_Delete(t *testing.T) {
 	}
 }
 
-func TestVaultsService_DeleteItem(t *testing.T) {
+func TestService_DeleteItem(t *testing.T) {
 	setupStubs(t)
 
 	response, err := service.DeleteItem("vault1", "secret1")

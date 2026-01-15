@@ -19,13 +19,30 @@ type UpdateDataResponse struct {
 	URI string `json:"uri"`
 }
 
+// updateOps defines the callable operations required to execute an Update request.
+type updateOps struct {
+	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
+	resolveUpdateContent func(p *Payload) (map[string]interface{}, error)
+	updateVault          func(*Payload, *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error)
+}
+
 // Update modifies a vault item and its access keys on the Chef server.
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
 func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
-	keyState, err := s.loadKeysCurrentState(payload)
+	ops := updateOps{
+		loadKeysCurrentState: s.loadKeysCurrentState,
+		resolveUpdateContent: s.resolveUpdateContent,
+		updateVault:          s.updateVault,
+	}
+	return s.update(payload, ops)
+}
+
+// update is the worker called by the public API with the operational methods to complete the update request.
+func (s *Service) update(payload *Payload, ops updateOps) (*UpdateResponse, error) {
+	keyState, err := ops.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +52,8 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 	finalQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
 
 	mode, modeState := payload.resolveKeysMode(keyState.Mode)
-	keyState.Mode = mode
 
-	content, err := s.resolveUpdateContent(payload)
+	content, err := ops.resolveUpdateContent(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +68,7 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 		Clients:       payload.Clients,
 	}
 
-	keysResult, err := s.updateVault(updatePayload, modeState)
+	keysResult, err := ops.updateVault(updatePayload, modeState)
 	if err != nil {
 		return nil, err
 	}

@@ -3,7 +3,6 @@ package vault
 import (
 	"fmt"
 
-	"github.com/justintsteele/go-chef-vault/cheferr"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
@@ -48,15 +47,17 @@ func (s *Service) DeleteItem(name string, item string) (resp *DeleteResponse, er
 		return
 	}
 
-	switch keyState.Mode {
-	case item_keys.KeysModeDefault:
-		if err := s.deleteDefaultKeys(name, item, resp); err != nil {
+	if keyState.Mode == item_keys.KeysModeSparse {
+		actors := make([]string, len(keyState.Admins)+len(keyState.Clients))
+		actors = append(actors, keyState.Admins...)
+		actors = append(actors, keyState.Clients...)
+		if err := s.deleteSparseKeys(name, item, actors, resp); err != nil {
 			return nil, err
 		}
-	case item_keys.KeysModeSparse:
-		if err := s.deleteSparseKeys(name, item, keyState, resp); err != nil {
-			return nil, err
-		}
+	}
+
+	if err := s.deleteDefaultKeys(name, item, resp); err != nil {
+		return nil, err
 	}
 
 	return resp, nil
@@ -72,41 +73,6 @@ func (s *Service) deleteVaultItem(name string, item string) (resp *DeleteRespons
 		Response: Response{
 			URI: itemUri,
 		},
-	}
-	return
-}
-
-// deleteDefaultKeys removes the base keys and any actor keys stored in default mode.
-func (s *Service) deleteDefaultKeys(name string, item string, out *DeleteResponse) (err error) {
-	itemKeysUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item+"_keys")
-	if err := s.Client.DataBags.DeleteItem(name, item+"_keys"); err != nil {
-		return err
-	}
-	out.KeysURIs = append(out.KeysURIs, itemKeysUri)
-	return
-}
-
-// deleteSparseKeys removes all actor keys and the base sparse keys item.
-func (s *Service) deleteSparseKeys(name string, item string, keyState *item_keys.VaultItemKeys, out *DeleteResponse) (err error) {
-	baseKeyId := fmt.Sprintf("%s_keys", item)
-	baseUri := fmt.Sprintf("%s/%s", s.vaultURL(name), baseKeyId)
-	if err := s.Client.DataBags.DeleteItem(name, baseKeyId); err != nil {
-		if !cheferr.IsNotFound(err) {
-			return err
-		}
-	}
-	out.KeysURIs = append(out.KeysURIs, baseUri)
-
-	actors := item_keys.MergeClients(keyState.Admins, keyState.Clients)
-	for _, actor := range actors {
-		sparseId := fmt.Sprintf("%s_key_%s", item, actor)
-		adminKeyUri := fmt.Sprintf("%s/%s", s.vaultURL(name), sparseId)
-		if err := s.Client.DataBags.DeleteItem(name, sparseId); err != nil {
-			if !cheferr.IsNotFound(err) {
-				return err
-			}
-		}
-		out.KeysURIs = append(out.KeysURIs, adminKeyUri)
 	}
 	return
 }

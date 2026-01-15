@@ -111,19 +111,6 @@ func (s *Service) resolveActors(payload *Payload, keyState *item_keys.VaultItemK
 	return nil
 }
 
-// pruneKeys removes the keys for the requested actors.
-func (s *Service) pruneKeys(actors []string, keyState *item_keys.VaultItemKeys, payload *Payload) error {
-	for _, actor := range actors {
-		keyState.PruneActor(actor)
-		if keyState.Mode == item_keys.KeysModeSparse {
-			if err := s.deleteSparseKeys(payload.VaultName, payload.VaultItemName, keyState, &DeleteResponse{}); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // pruneData recursively removes keys from existing data based on the shape of the remove payload.
 func pruneData(existing, remove any) (any, bool) {
 	switch rem := remove.(type) {

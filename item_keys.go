@@ -9,87 +9,7 @@ import (
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
-func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
-	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
-		if cheferr.IsConflict(err) {
-			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), payload.VaultItemName+"_keys"))
-	return nil
-}
-
-func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
-	baseKeys := map[string]any{
-		"id":           keys["id"],
-		"admins":       keys["admins"],
-		"clients":      keys["clients"],
-		"mode":         keys["mode"],
-		"search_query": keys["search_query"],
-	}
-
-	if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
-		if cheferr.IsConflict(err) {
-			if err := s.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), baseKeys["id"].(string)))
-
-	for k, val := range keys {
-		switch k {
-		case "id", "admins", "clients", "search_query", "mode":
-			continue
-		}
-		sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, k)
-		sparseItem := map[string]interface{}{
-			"id": sparseId,
-		}
-		sparseItem[k] = val
-		if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
-			if cheferr.IsConflict(err) {
-				if err := s.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
-					return err
-				}
-			} else {
-				return err
-			}
-		}
-		out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), sparseId))
-	}
-	return nil
-}
-
-func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.KeysModeState, keys map[string]any) error {
-	switch keysModeState.Desired {
-	case item_keys.KeysModeDefault:
-		// If Desired is "default", we need to clean up the sparse keys
-		for key := range keys {
-			switch key {
-			case "id", "admins", "clients", "search_query", "mode":
-				continue
-			}
-			sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, key)
-			if err := s.Client.DataBags.DeleteItem(payload.VaultName, sparseId); err != nil {
-				return err
-			}
-		}
-	case item_keys.KeysModeSparse:
-		// If Desired is "sparse", we need to clean up the base keys
-		if err := s.Client.DataBags.DeleteItem(payload.VaultName, payload.VaultItemName+"_keys"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
+// loadKeysCurrentState retrieves the data from the default keys data bag item prior to actions being taken on the vault.
 func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKeys, error) {
 	raw, err := s.Client.DataBags.GetItem(
 		payload.VaultName,
@@ -110,39 +30,6 @@ func (s *Service) loadKeysCurrentState(payload *Payload) (*item_keys.VaultItemKe
 	}
 
 	return &vik, nil
-}
-
-func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.KeysModeState, secret []byte) (*item_keys.VaultItemKeysResult, error) {
-	mode := payload.effectiveKeysMode()
-	keys, err := s.buildKeys(payload, secret)
-	result := &item_keys.VaultItemKeysResult{}
-	if err != nil {
-		return nil, err
-	}
-	keys["mode"] = &mode
-
-	if keysModeState.Current != keysModeState.Desired {
-		if err := s.cleanupCurrentKeys(payload, keysModeState, keys); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := s.writeKeys(payload, mode, keys, result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func (s *Service) writeKeys(payload *Payload, mode item_keys.KeysMode, keys map[string]any, result *item_keys.VaultItemKeysResult) error {
-	switch mode {
-	case item_keys.KeysModeDefault:
-		return s.buildDefaultKeys(payload, &keys, result)
-	case item_keys.KeysModeSparse:
-		return s.buildSparseKeys(payload, keys, result)
-	default:
-		return fmt.Errorf("unsupported key format: %s", mode)
-	}
 }
 
 // buildKeys collects actor public keys and builds the encrypted vault keys item
@@ -196,6 +83,101 @@ func (s *Service) buildKeys(payload *Payload, secret []byte) (map[string]any, er
 	return vik.BuildKeysItem(finalClients), nil
 }
 
+// createKeysDataBag prepares the item_keys.VaultItemKeysResult to be written out as data bag items.
+func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.KeysModeState, secret []byte) (*item_keys.VaultItemKeysResult, error) {
+	mode := payload.effectiveKeysMode()
+	keys, err := s.buildKeys(payload, secret)
+	result := &item_keys.VaultItemKeysResult{}
+	if err != nil {
+		return nil, err
+	}
+	keys["mode"] = &mode
+
+	if keysModeState.Current != keysModeState.Desired {
+		if err := s.cleanupCurrentKeys(payload, keysModeState, keys); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := s.writeKeys(payload, mode, keys, result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// writeKeys creates the default and sparse keys data bag items as specified in the item_keys.VaultItemKeysResult.
+func (s *Service) writeKeys(payload *Payload, mode item_keys.KeysMode, keys map[string]any, result *item_keys.VaultItemKeysResult) error {
+	switch mode {
+	case item_keys.KeysModeDefault:
+		return s.buildDefaultKeys(payload, &keys, result)
+	case item_keys.KeysModeSparse:
+		return s.buildSparseKeys(payload, keys, result)
+	default:
+		return fmt.Errorf("unsupported key format: %s", mode)
+	}
+}
+
+// buildDefaultKeys constructs and writes the default keys data bag item.
+func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
+	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
+		if cheferr.IsConflict(err) {
+			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), payload.VaultItemName+"_keys"))
+	return nil
+}
+
+// buildSparseKeys constructs and writes the sparse keys data bag items.
+func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
+	baseKeys := map[string]any{
+		"id":           keys["id"],
+		"admins":       keys["admins"],
+		"clients":      keys["clients"],
+		"mode":         keys["mode"],
+		"search_query": keys["search_query"],
+	}
+
+	if err := s.Client.DataBags.CreateItem(payload.VaultName, &baseKeys); err != nil {
+		if cheferr.IsConflict(err) {
+			if err := s.Client.DataBags.UpdateItem(payload.VaultName, baseKeys["id"].(string), &baseKeys); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), baseKeys["id"].(string)))
+
+	for k, val := range keys {
+		switch k {
+		case "id", "admins", "clients", "search_query", "mode":
+			continue
+		}
+		sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, k)
+		sparseItem := map[string]interface{}{
+			"id": sparseId,
+		}
+		sparseItem[k] = val
+		if err := s.Client.DataBags.CreateItem(payload.VaultName, &sparseItem); err != nil {
+			if cheferr.IsConflict(err) {
+				if err := s.Client.DataBags.UpdateItem(payload.VaultName, sparseId, &sparseItem); err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		out.URIs = append(out.URIs, fmt.Sprintf("%s/%s", s.vaultURL(payload.VaultName), sparseId))
+	}
+	return nil
+}
+
 // collectAdmins collects the public keys for the given admins.
 func (s *Service) collectAdmins(names []string, admins map[string]chef.AccessKey) {
 	for _, name := range names {
@@ -223,4 +205,78 @@ func (s *Service) collectClients(names []string, clients map[string]chef.AccessK
 // clientPublicKey retrieves the public key for a specified actor.
 func (s *Service) clientPublicKey(actor string) (chef.AccessKey, error) {
 	return s.Client.Clients.GetKey(actor, "default")
+}
+
+// cleanupCurrentKeys migrates keys between default and sparse keys modes.
+func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.KeysModeState, keys map[string]any) error {
+	switch keysModeState.Desired {
+	case item_keys.KeysModeDefault:
+		// If Desired is "default", we need to clean up the sparse keys
+		for key := range keys {
+			switch key {
+			case "id", "admins", "clients", "search_query", "mode":
+				continue
+			}
+			sparseId := fmt.Sprintf("%s_key_%s", payload.VaultItemName, key)
+			if err := s.Client.DataBags.DeleteItem(payload.VaultName, sparseId); err != nil {
+				return err
+			}
+		}
+	case item_keys.KeysModeSparse:
+		// If Desired is "sparse", we need to clean up the base keys
+		if err := s.Client.DataBags.DeleteItem(payload.VaultName, payload.VaultItemName+"_keys"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// pruneKeys removes the keys for the requested actors.
+func (s *Service) pruneKeys(actors []string, keyState *item_keys.VaultItemKeys, payload *Payload) error {
+	for _, actor := range actors {
+		keyState.PruneActor(actor)
+		if keyState.Mode == item_keys.KeysModeSparse {
+			if err := s.deleteSparseKeys(payload.VaultName, payload.VaultItemName, actor, &DeleteResponse{}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// deleteDefaultKeys removes the base keys and any actor keys stored in default mode.
+func (s *Service) deleteDefaultKeys(name string, item string, out *DeleteResponse) error {
+	itemKeysUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item+"_keys")
+	if err := s.Client.DataBags.DeleteItem(name, item+"_keys"); err != nil {
+		return err
+	}
+	out.KeysURIs = append(out.KeysURIs, itemKeysUri)
+	return nil
+}
+
+// deleteSparseKeys removes all actor keys and the base sparse keys item.
+func (s *Service) deleteSparseKeys(name string, item string, actor interface{}, out *DeleteResponse) error {
+	baseKeyId := fmt.Sprintf("%s_keys", item)
+	baseUri := fmt.Sprintf("%s/%s", s.vaultURL(name), baseKeyId)
+	out.KeysURIs = append(out.KeysURIs, baseUri)
+
+	var actors []string
+	switch actor := actor.(type) {
+	case string:
+		actors = []string{actor}
+	case []string:
+		actors = actor
+	}
+
+	for _, actor := range actors {
+		sparseId := fmt.Sprintf("%s_key_%s", item, actor)
+		adminKeyUri := fmt.Sprintf("%s/%s", s.vaultURL(name), sparseId)
+		if err := s.Client.DataBags.DeleteItem(name, sparseId); err != nil {
+			if !cheferr.IsNotFound(err) {
+				return err
+			}
+		}
+		out.KeysURIs = append(out.KeysURIs, adminKeyUri)
+	}
+	return nil
 }

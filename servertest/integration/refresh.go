@@ -14,6 +14,7 @@ func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error)
 
 	// add a new node and client that does not match search string.
 	Must(i.createClients(newNodeName + "0"))
+	Must(i.deleteClients(newNodeName + "1"))
 
 	result, err = i.Service.Refresh(pl)
 	if err != nil {

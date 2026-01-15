@@ -15,7 +15,6 @@ type RefreshResponse = UpdateResponse
 // refreshOps defines the callable operations required to execute a Refresh request.
 type refreshOps struct {
 	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
-	getClientsFromSearch func(*Payload) ([]string, error)
 	loadSharedSecret     func(*Payload) ([]byte, error)
 	encryptSharedSecret  func(pem string, secret []byte) (string, error)
 	clientPublicKey      func(string) (chef.AccessKey, error)
@@ -30,7 +29,6 @@ type refreshOps struct {
 func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	ops := refreshOps{
 		loadKeysCurrentState: s.loadKeysCurrentState,
-		getClientsFromSearch: s.getClientsFromSearch,
 		loadSharedSecret:     s.loadSharedSecret,
 		encryptSharedSecret:  item_keys.EncryptSharedSecret,
 		clientPublicKey:      s.clientPublicKey,
@@ -67,17 +65,22 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 		SearchQuery:   searchQuery,
 	}
 
-	searchedClients, err := ops.getClientsFromSearch(refreshPayload)
+	searchedClients, err := s.getClientsFromSearch(refreshPayload)
 	if err != nil {
 		return nil, err
 	}
 
 	normalizedClients := item_keys.MergeClients(searchedClients, nextState.Clients)
-
+	var removedClients []string
 	if payload.Clean {
-		normalizedClients, _, err = cleanClients(normalizedClients, s.clientExists)
+		normalizedClients, removedClients, err = cleanClients(normalizedClients, s.clientExists)
 		if err != nil {
 			return nil, err
+		}
+		if len(removedClients) != 0 {
+			if err := s.pruneKeys(removedClients, nextState, payload); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -95,19 +98,10 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 		return refreshResponse, nil
 	}
 
-	currentClients := nextState.Clients
+	currentClients := keyState.Clients
 	desiredClients := normalizedClients
 
 	clientsAdded := item_keys.DiffLists(desiredClients, currentClients)
-
-	var clientsRemoved []string
-	if payload.Clean {
-		clientsRemoved = item_keys.DiffLists(currentClients, desiredClients)
-	}
-
-	for _, client := range clientsRemoved {
-		delete(nextState.Keys, client)
-	}
 
 	sharedSecret, err := ops.loadSharedSecret(payload)
 	if err != nil {

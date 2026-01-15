@@ -9,6 +9,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type refreshRecorder struct {
+	calls []string
+	wrote struct {
+		keys map[string]any
+		mode item_keys.KeysMode
+	}
+}
+
+func (r *refreshRecorder) ops(keysMode item_keys.KeysMode) refreshOps {
+	return refreshOps{
+		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
+			r.calls = append(r.calls, "loadKeysCurrentState")
+			return &item_keys.VaultItemKeys{
+				Mode:        keysMode,
+				SearchQuery: "name:testhost*",
+				Keys: map[string]string{
+					"tester": "encrypted secret",
+				},
+			}, nil
+		},
+		loadSharedSecret: func(*Payload) ([]byte, error) {
+			r.calls = append(r.calls, "loadSecret")
+			return []byte("secret"), nil
+		},
+		clientPublicKey: func(string) (chef.AccessKey, error) {
+			r.calls = append(r.calls, "clientKey")
+			return chef.AccessKey{
+				Name:      "tester",
+				PublicKey: "RSA KEY",
+			}, nil
+		},
+		encryptSharedSecret: func(pem string, secret []byte) (string, error) {
+			r.calls = append(r.calls, "encryptSharedSecret")
+			return "encrypted secret", nil
+		},
+		writeKeys: func(_ *Payload, mode item_keys.KeysMode, keys map[string]any, _ *item_keys.VaultItemKeysResult) error {
+			r.calls = append(r.calls, "writeKeys")
+			r.wrote.mode = mode
+			r.wrote.keys = keys
+			return nil
+		},
+	}
+}
+
 func TestRefresh_CleanClients(t *testing.T) {
 	setupStubs(t)
 
@@ -36,67 +80,52 @@ func TestRefresh_CleanClients(t *testing.T) {
 
 func TestRefresh_SparseModeEncryptsPerClient(t *testing.T) {
 	setupStubs(t)
-	var calls []string
-	var wrote struct {
-		mode item_keys.KeysMode
-		keys map[string]any
-	}
 
-	ops := refreshOps{
-		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
-			calls = append(calls, "loadKeysCurrentState")
-			return &item_keys.VaultItemKeys{
-				Mode:        item_keys.KeysModeSparse,
-				SearchQuery: "name:testhost*",
-				Keys: map[string]string{
-					"tester": "encrypted secret",
-				},
-			}, nil
-		},
-		getClientsFromSearch: func(*Payload) ([]string, error) {
-			calls = append(calls, "searchClients")
-			return []string{"a", "b"}, nil
-		},
-		loadSharedSecret: func(*Payload) ([]byte, error) {
-			calls = append(calls, "loadSecret")
-			return []byte("secret"), nil
-		},
-		clientPublicKey: func(string) (chef.AccessKey, error) {
-			calls = append(calls, "clientKey")
-			return chef.AccessKey{
-				Name:      "tester",
-				PublicKey: "RSA KEY",
-			}, nil
-		},
-		encryptSharedSecret: func(pem string, secret []byte) (string, error) {
-			calls = append(calls, "encryptSharedSecret")
-			return "encrypted secret", nil
-		},
-		writeKeys: func(_ *Payload, mode item_keys.KeysMode, keys map[string]any, _ *item_keys.VaultItemKeysResult) error {
-			calls = append(calls, "writeKeys")
-			wrote.mode = mode
-			wrote.keys = keys
-			return nil
-		},
-	}
+	rec := refreshRecorder{}
 
-	_, err := service.refresh(&Payload{}, ops)
+	_, err := service.refresh(&Payload{}, rec.ops(item_keys.KeysModeSparse))
 	require.NoError(t, err)
 
 	require.Equal(t, []string{
 		"loadKeysCurrentState",
-		"searchClients",
 		"loadSecret",
 		"clientKey",
 		"encryptSharedSecret",
 		"clientKey",
 		"encryptSharedSecret",
+		"clientKey",
+		"encryptSharedSecret",
 		"writeKeys",
-	}, calls)
-	require.Equal(t, item_keys.KeysModeSparse, wrote.mode)
-	keys := wrote.keys
+	}, rec.calls)
+	require.Equal(t, item_keys.KeysModeSparse, rec.wrote.mode)
+	keys := rec.wrote.keys
 	require.Equal(t, "encrypted secret", keys["tester"])
-	require.Equal(t, "encrypted secret", keys["a"])
-	require.Equal(t, "encrypted secret", keys["b"])
+	require.Equal(t, "encrypted secret", keys["testhost3"])
+	require.Equal(t, "encrypted secret", keys["testhost4"])
+}
 
+func TestRefresh_DefaultKeys(t *testing.T) {
+	setupStubs(t)
+
+	rec := refreshRecorder{}
+
+	_, err := service.refresh(&Payload{}, rec.ops(item_keys.KeysModeDefault))
+	require.NoError(t, err)
+
+	require.Equal(t, []string{
+		"loadKeysCurrentState",
+		"loadSecret",
+		"clientKey",
+		"encryptSharedSecret",
+		"clientKey",
+		"encryptSharedSecret",
+		"clientKey",
+		"encryptSharedSecret",
+		"writeKeys",
+	}, rec.calls)
+	require.Equal(t, item_keys.KeysModeDefault, rec.wrote.mode)
+	keys := rec.wrote.keys
+	require.Equal(t, "encrypted secret", keys["tester"])
+	require.Equal(t, "encrypted secret", keys["testhost3"])
+	require.Equal(t, "encrypted secret", keys["testhost4"])
 }

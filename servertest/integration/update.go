@@ -20,6 +20,7 @@ func (i *IntegrationService) updateContent() (result *vault.UpdateResponse, err 
 }`
 	// Here we add a new node and client so that the search query we added in update has something new to find.
 	Must(i.createClients(newNodeName))
+	Must(i.createClients(newNodeName + "1"))
 	Must(i.createClients(fakeNodeName))
 
 	if err = json.Unmarshal([]byte(vaultItem), &raw); err != nil {

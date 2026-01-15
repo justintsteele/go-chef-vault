@@ -67,10 +67,9 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 		}
 
 		removeContent, ok := pruneData(dbi, payload.Content)
-		if !ok {
-			return nil, err
+		if ok {
+			removePayload.Content = removeContent.(map[string]any)
 		}
-		removePayload.Content = removeContent.(map[string]any)
 	}
 
 	removed, err := ops.update(removePayload)
@@ -111,7 +110,7 @@ func (s *Service) resolveActors(payload *Payload, keyState *item_keys.VaultItemK
 	return nil
 }
 
-// pruneKeys removes the kes for the requested actors.
+// pruneKeys removes the keys for the requested actors.
 func (s *Service) pruneKeys(actors []string, keyState *item_keys.VaultItemKeys, payload *Payload) error {
 	for _, actor := range actors {
 		keyState.PruneActor(actor)

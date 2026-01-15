@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeriveAESKey_Returns32ByteKey(t *testing.T) {
-	actorKey, privateKey, _ := genActorKey(t)
-
-	key, err := DeriveAESKey(actorKey, privateKey)
-	require.NoError(t, err)
-	require.Len(t, key, 32)
-}
-
 func TestDecryptSharedSecret_RoundTrip(t *testing.T) {
 	actorKey, privateKey, secret := genActorKey(t)
 

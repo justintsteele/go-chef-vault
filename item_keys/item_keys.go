@@ -54,6 +54,22 @@ func (k *VaultItemKeys) BuildKeysItem(clients []string) map[string]any {
 	return item
 }
 
+func (k *VaultItemKeys) PruneActor(actor string) {
+	k.Clients = pruneSlice(k.Clients, actor)
+	k.Admins = pruneSlice(k.Admins, actor)
+	delete(k.Keys, actor)
+}
+
+func pruneSlice(s []string, actor string) []string {
+	out := s[:0]
+	for _, v := range s {
+		if v != actor {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 // MapKeys returns the keys of a map as a slice.
 func MapKeys[K comparable, V any](m map[K]V) []K {
 	keys := make([]K, 0, len(m))

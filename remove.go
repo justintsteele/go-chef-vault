@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
@@ -13,47 +14,66 @@ type RemoveDataResponse struct {
 	URI string `json:"uri"`
 }
 
+type removeOps struct {
+	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
+	getItem              func(string, string) (chef.DataBagItem, error)
+	update               func(*Payload) (*UpdateResponse, error)
+}
+
 // Remove removes clients, admins, or data keys from an existing vault item.
 //
 // References:
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_remove.rb
 func (s *Service) Remove(payload *Payload) (*RemoveResponse, error) {
-	keyState, err := s.loadKeysCurrentState(payload)
+	ops := removeOps{
+		loadKeysCurrentState: s.loadKeysCurrentState,
+		getItem:              s.GetItem,
+		update:               s.Update,
+	}
+	return s.remove(payload, ops)
+}
+
+// remove is the worker called by the public API with the operational methods to complete the remove request.
+func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, error) {
+	keyState, err := ops.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	newClients, err := s.resolveClients(payload, keyState)
-	if err != nil {
+	if err := s.resolveActors(payload, keyState); err != nil {
 		return nil, err
-	}
-
-	newAdmins := keyState.Admins
-	if payload.Admins != nil {
-		newAdmins = resolveActors(keyState.Admins, payload.Admins)
 	}
 
 	removePayload := &Payload{
 		VaultName:     payload.VaultName,
 		VaultItemName: payload.VaultItemName,
-		Clients:       newClients,
-		Admins:        newAdmins,
+		Clients:       keyState.Clients,
+		Admins:        keyState.Admins,
 	}
 
 	if payload.Clean {
 		removePayload.Clean = payload.Clean
 	}
-	removePayload.mergeKeyActors(keyState)
 
 	if payload.Content != nil {
-		removeContent, err := s.resolveRemoveContent(payload)
+		current, err := ops.getItem(payload.VaultName, payload.VaultItemName)
 		if err != nil {
 			return nil, err
 		}
-		removePayload.Content = removeContent
+
+		dbi, err := item.DataBagItemMap(current)
+		if err != nil {
+			return nil, err
+		}
+
+		removeContent, ok := pruneData(dbi, payload.Content)
+		if !ok {
+			return nil, err
+		}
+		removePayload.Content = removeContent.(map[string]any)
 	}
 
-	removed, err := s.Update(removePayload)
+	removed, err := ops.update(removePayload)
 	if err != nil {
 		return nil, err
 	}
@@ -61,14 +81,14 @@ func (s *Service) Remove(payload *Payload) (*RemoveResponse, error) {
 	return removed, nil
 }
 
-// resolveClients returns the list of desired clients after the requested removals.
-func (s *Service) resolveClients(payload *Payload, keyState *item_keys.VaultItemKeys) ([]string, error) {
+// resolveActors removes actors and their keys.
+func (s *Service) resolveActors(payload *Payload, keyState *item_keys.VaultItemKeys) error {
 	toRemove := make([]string, 0)
 
 	if payload.SearchQuery != nil {
 		found, err := s.getClientsFromSearch(payload)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		toRemove = append(toRemove, found...)
 	}
@@ -77,53 +97,31 @@ func (s *Service) resolveClients(payload *Payload, keyState *item_keys.VaultItem
 		toRemove = append(toRemove, payload.Clients...)
 	}
 
+	if payload.Admins != nil {
+		toRemove = append(toRemove, payload.Admins...)
+	}
+
 	if len(toRemove) == 0 {
-		return keyState.Clients, nil
+		return nil
 	}
 
-	return resolveActors(keyState.Clients, toRemove), nil
+	if err := s.pruneKeys(toRemove, keyState, payload); err != nil {
+		return err
+	}
+	return nil
 }
 
-// resolveRemoveContent returns the content of the vault after the requested keys
-// (and nested keys) have been removed.
-func (s *Service) resolveRemoveContent(p *Payload) (map[string]any, error) {
-	current, err := s.GetItem(p.VaultName, p.VaultItemName)
-	if err != nil {
-		return nil, err
-	}
-
-	dbi, err := item.DataBagItemMap(current)
-	if err != nil {
-		return nil, err
-	}
-
-	pruned, ok := pruneData(dbi, p.Content)
-	if !ok {
-		return map[string]any{}, nil
-	}
-
-	return pruned.(map[string]any), nil
-}
-
-// resolveActors returns the remaining actors after requested removals.
-func resolveActors(have, remove []string) []string {
-	if len(have) == 0 || len(remove) == 0 {
-		return have
-	}
-
-	removeSet := make(map[string]struct{}, len(remove))
-	for _, r := range remove {
-		removeSet[r] = struct{}{}
-	}
-
-	out := make([]string, 0, len(have))
-	for _, h := range have {
-		if _, found := removeSet[h]; !found {
-			out = append(out, h)
+// pruneKeys removes the kes for the requested actors.
+func (s *Service) pruneKeys(actors []string, keyState *item_keys.VaultItemKeys, payload *Payload) error {
+	for _, actor := range actors {
+		keyState.PruneActor(actor)
+		if keyState.Mode == item_keys.KeysModeSparse {
+			if err := s.deleteSparseKeys(payload.VaultName, payload.VaultItemName, keyState, &DeleteResponse{}); err != nil {
+				return err
+			}
 		}
 	}
-
-	return out
+	return nil
 }
 
 // pruneData recursively removes keys from existing data based on the shape of the remove payload.

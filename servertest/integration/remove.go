@@ -17,7 +17,7 @@ func (i *IntegrationService) remove() (result *vault.UpdateResponse, err error) 
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
 		Clients:       []string{fakeNodeName},
-		Clean:         true,
+		CleanUnknown:  true,
 		Content:       raw,
 	}
 

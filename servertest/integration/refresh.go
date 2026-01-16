@@ -8,7 +8,7 @@ func (i *IntegrationService) refresh() (result *vault.UpdateResponse, err error)
 	pl := &vault.Payload{
 		VaultName:     vaultName,
 		VaultItemName: vaultItemName,
-		Clean:         true,
+		CleanUnknown:  true,
 		SkipReencrypt: true,
 	}
 

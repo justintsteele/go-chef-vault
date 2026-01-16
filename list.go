@@ -49,6 +49,8 @@ func (s *Service) ListItems(name string) (data *chef.DataBagListResult, err erro
 	for item, url := range *dbl {
 		if strings.HasSuffix(item, "_keys") {
 			continue
+		} else if strings.Contains(item, "_key_") {
+			continue
 		} else {
 			items[item] = url
 		}

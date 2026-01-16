@@ -46,24 +46,16 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 		Admins:        keyState.Admins,
 	}
 
-	removePayload := &Payload{
-		VaultName:     payload.VaultName,
-		VaultItemName: payload.VaultItemName,
-		Clients:       keyState.Clients,
-		Admins:        keyState.Admins,
-	}
-
-	if payload.Clean {
-		resolvedClients, unknownClients, err := s.cleanUnknownClients(payload, keyState, keyState.Clients)
+	if payload.CleanUnknown {
+		resolvedClients, _, err := s.cleanUnknownClients(payload, keyState, keyState.Clients)
 		if err != nil {
 			return nil, err
 		}
 
-		removePayload.Clients = append(removePayload.Clients, unknownClients...)
 		finalPayload.Clients = resolvedClients
 	}
 
-	if err := s.resolveActors(removePayload, keyState); err != nil {
+	if err := s.resolveActors(payload, keyState); err != nil {
 		return nil, err
 	}
 

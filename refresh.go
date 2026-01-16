@@ -72,7 +72,7 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 
 	addedClients := item_keys.DiffLists(normalizedClients, nextState.Clients)
 
-	if payload.Clean {
+	if payload.CleanUnknown {
 		normalizedClients, _, err = s.cleanUnknownClients(payload, nextState, normalizedClients)
 		if err != nil {
 			return nil, err

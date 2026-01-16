@@ -82,7 +82,7 @@ func (s *Service) rotateKeys(payload *Payload, ops rotateOps) (*RotateResponse, 
 
 	normalizedClients := item_keys.MergeClients(searchedClients, nextState.Clients)
 
-	if payload.Clean {
+	if payload.CleanUnknown {
 		normalizedClients, _, err = s.cleanUnknownClients(payload, nextState, normalizedClients)
 		if err != nil {
 			return nil, err

@@ -14,6 +14,7 @@ type Payload struct {
 	Admins        []string
 	Clients       []string
 	Clean         bool
+	CleanUnknown  bool
 	SkipReencrypt bool
 }
 

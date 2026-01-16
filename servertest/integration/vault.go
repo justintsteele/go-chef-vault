@@ -105,6 +105,14 @@ func RunVault(cfg Config) error {
 		return isvc.refresh()
 	})
 
+	runStep("Rotate Keys", func() (any, error) {
+		return isvc.rotate()
+	})
+
+	runStep("Rotate All Keys", func() (any, error) {
+		return isvc.rotateAllKeys()
+	})
+
 	runStep("Remove", func() (any, error) {
 		return isvc.remove()
 	})

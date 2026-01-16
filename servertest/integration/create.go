@@ -30,5 +30,16 @@ func (i *IntegrationService) createVault() (res *vault.CreateResponse, err error
 
 	res, _ = i.Service.Create(pl)
 
+	// create a second vault so we can see rotate all keys do more than one vault later
+	pl2 := &vault.Payload{
+		VaultName:     "go-vault2",
+		VaultItemName: "secret2",
+		Content:       raw,
+		Admins:        admins,
+		Clients:       []string{},
+	}
+
+	_, _ = i.Service.Create(pl2)
+
 	return
 }

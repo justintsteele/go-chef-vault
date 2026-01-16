@@ -62,7 +62,3 @@ func TestRotateKeys_DefaultPayload(t *testing.T) {
 	require.NotEmpty(t, rec.wrote.rotatePayload.Admins)
 	require.NotEmpty(t, rec.wrote.rotatePayload.Content)
 }
-
-func TestRotateKeys_CleanUnknownClients(t *testing.T) {
-	setupStubs(t)
-}

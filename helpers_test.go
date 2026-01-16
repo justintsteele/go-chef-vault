@@ -82,9 +82,9 @@ func stubMuxCreate(t *testing.T) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/data":
-			_, _ = fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1"}`)
+			_, _ = fmt.Fprintf(w, `{"vault1": "http://localhost/data/vault1"}`)
 		case "/data/vault1":
-			_, _ = fmt.Fprintf(w, `{"uri": "http://localhost/data/vault1/secret1"}`)
+			_, _ = fmt.Fprintf(w, `{"secret1": "http://localhost/data/vault1/secret1"}`)
 		case "/users/tester/keys/default":
 			_, _ = fmt.Fprintf(w, `{
              			        "name": "default",

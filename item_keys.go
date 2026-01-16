@@ -110,16 +110,16 @@ func (s *Service) createKeysDataBag(payload *Payload, keysModeState *item_keys.K
 func (s *Service) writeKeys(payload *Payload, mode item_keys.KeysMode, keys map[string]any, result *item_keys.VaultItemKeysResult) error {
 	switch mode {
 	case item_keys.KeysModeDefault:
-		return s.buildDefaultKeys(payload, &keys, result)
+		return s.writeDefaultKeys(payload, &keys, result)
 	case item_keys.KeysModeSparse:
-		return s.buildSparseKeys(payload, keys, result)
+		return s.writeSparseKeys(payload, keys, result)
 	default:
 		return fmt.Errorf("unsupported key format: %s", mode)
 	}
 }
 
-// buildDefaultKeys constructs and writes the default keys data bag item.
-func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
+// writeDefaultKeys constructs and writes the default keys data bag item.
+func (s *Service) writeDefaultKeys(payload *Payload, keys *map[string]any, out *item_keys.VaultItemKeysResult) error {
 	if err := s.Client.DataBags.CreateItem(payload.VaultName, &keys); err != nil {
 		if cheferr.IsConflict(err) {
 			if err := s.Client.DataBags.UpdateItem(payload.VaultName, payload.VaultItemName+"_keys", &keys); err != nil {
@@ -133,8 +133,8 @@ func (s *Service) buildDefaultKeys(payload *Payload, keys *map[string]any, out *
 	return nil
 }
 
-// buildSparseKeys constructs and writes the sparse keys data bag items.
-func (s *Service) buildSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
+// writeSparseKeys constructs and writes the sparse keys data bag items.
+func (s *Service) writeSparseKeys(payload *Payload, keys map[string]any, out *item_keys.VaultItemKeysResult) error {
 	baseKeys := map[string]any{
 		"id":           keys["id"],
 		"admins":       keys["admins"],

@@ -21,7 +21,6 @@ type UpdateDataResponse struct {
 
 // updateOps defines the callable operations required to execute an Update request.
 type updateOps struct {
-	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
 	resolveUpdateContent func(p *Payload) (map[string]interface{}, error)
 	updateVault          func(*Payload, *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error)
 }
@@ -33,7 +32,6 @@ type updateOps struct {
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
 func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 	ops := updateOps{
-		loadKeysCurrentState: s.loadKeysCurrentState,
 		resolveUpdateContent: s.resolveUpdateContent,
 		updateVault:          s.updateVault,
 	}
@@ -42,12 +40,19 @@ func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
 
 // update is the worker called by the public API with the operational methods to complete the update request.
 func (s *Service) update(payload *Payload, ops updateOps) (*UpdateResponse, error) {
-	keyState, err := ops.loadKeysCurrentState(payload)
+	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	payload.mergeKeyActors(keyState)
+	keyState.Admins = item_keys.MergeClients(keyState.Admins, payload.Admins)
+
+	if payload.Clean {
+		if err := s.pruneKeys(keyState.Clients, keyState, payload); err != nil {
+			return nil, err
+		}
+		keyState.Clients = nil
+	}
 
 	finalQuery := item_keys.ResolveSearchQuery(keyState.SearchQuery, payload.SearchQuery)
 
@@ -64,8 +69,8 @@ func (s *Service) update(payload *Payload, ops updateOps) (*UpdateResponse, erro
 		Content:       content,
 		KeysMode:      &mode,
 		SearchQuery:   finalQuery,
-		Admins:        payload.Admins,
-		Clients:       payload.Clients,
+		Admins:        keyState.Admins,
+		Clients:       keyState.Clients,
 	}
 
 	keysResult, err := ops.updateVault(updatePayload, modeState)

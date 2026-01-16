@@ -17,16 +17,6 @@ type updateRecorder struct {
 
 func (r *updateRecorder) ops() updateOps {
 	return updateOps{
-		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
-			r.calls = append(r.calls, "loadKeys")
-			return &item_keys.VaultItemKeys{
-				Mode:        item_keys.KeysModeDefault,
-				SearchQuery: "name:testhost*",
-				Keys: map[string]string{
-					"tester": "encrypted secret",
-				},
-			}, nil
-		},
 		resolveUpdateContent: func(p *Payload) (map[string]interface{}, error) {
 			r.calls = append(r.calls, "resolveUpdateContent")
 			content := map[string]interface{}{
@@ -58,7 +48,7 @@ func TestUpdate_ChangeKeysMode(t *testing.T) {
 		KeysMode:      &mode,
 	}, rec.ops())
 	require.NoError(t, err)
-	require.Equal(t, rec.calls, []string{"loadKeys", "resolveUpdateContent", "updateVault"})
+	require.Equal(t, rec.calls, []string{"resolveUpdateContent", "updateVault"})
 	require.Equal(t, rec.wrote.state.Desired, item_keys.KeysModeSparse)
 }
 
@@ -72,7 +62,7 @@ func TestUpdate_NoKeysMode(t *testing.T) {
 		VaultItemName: "secret1",
 	}, rec.ops())
 	require.NoError(t, err)
-	require.Equal(t, rec.calls, []string{"loadKeys", "resolveUpdateContent", "updateVault"})
+	require.Equal(t, rec.calls, []string{"resolveUpdateContent", "updateVault"})
 	require.Equal(t, rec.wrote.state.Desired, item_keys.KeysModeDefault)
 }
 
@@ -107,17 +97,10 @@ func TestPayload_mergeKeyActors_MergesAdminsAndClients(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	updPayload, err := stubPayload([]string{"tester", "pivotal"}, []string{"testhost", "testhost3"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	updPayload.mergeKeyActors(keyState)
-
 	got := keyState.Admins
 	want := []string{"tester", "pivotal"}
 
-	if !item_keys.EqualLists(got, want) {
+	if !equalLists(got, want) {
 		t.Errorf("All actors = %v, want %v", got, want)
 	}
 }

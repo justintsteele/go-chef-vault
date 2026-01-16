@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/item_keys"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,20 +19,6 @@ type removeRecorder struct {
 
 func (r *removeRecorder) ops() removeOps {
 	return removeOps{
-		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
-			r.calls = append(r.calls, "loadKeysCurrentState")
-			keys := make(map[string]string)
-			keys["tester"] = "encrypted key"
-			keys["testhost"] = "encrypted key"
-			keys["fakehost"] = "encrypted key"
-			return &item_keys.VaultItemKeys{
-				Mode:        item_keys.KeysModeSparse,
-				Clients:     []string{"testhost", "fakehost"},
-				Admins:      []string{"tester"},
-				SearchQuery: "name:testhost*",
-				Keys:        keys,
-			}, nil
-		},
 		getItem: func(vaultName, vaultItemName string) (chef.DataBagItem, error) {
 			r.calls = append(r.calls, "getItem")
 			return map[string]interface{}{
@@ -69,7 +54,6 @@ func TestRemove_Actor(t *testing.T) {
 	}, rec.ops())
 	require.NoError(t, err)
 	require.Equal(t, []string{
-		"loadKeysCurrentState",
 		"update",
 	}, rec.calls)
 	require.Equal(t, rec.wrote.removePayload.Clients, []string{"testhost"})
@@ -87,7 +71,6 @@ func TestRemove_Data(t *testing.T) {
 	}, rec.ops())
 	require.NoError(t, err)
 	require.Equal(t, []string{
-		"loadKeysCurrentState",
 		"getItem",
 		"update",
 	}, rec.calls)

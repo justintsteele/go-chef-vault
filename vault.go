@@ -39,14 +39,3 @@ func (p *Payload) resolveKeysMode(current item_keys.KeysMode) (item_keys.KeysMod
 		Desired: *p.KeysMode,
 	}
 }
-
-// mergeKeyActors merges payload actors into the existing key state, honoring the clean flag.
-func (p *Payload) mergeKeyActors(state *item_keys.VaultItemKeys) {
-	p.Admins = item_keys.MergeClients(state.Admins, p.Admins)
-
-	if p.Clean {
-		p.Clients = nil
-	} else {
-		p.Clients = item_keys.MergeClients(state.Clients, p.Clients)
-	}
-}

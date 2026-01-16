@@ -1,9 +1,5 @@
 package item_keys
 
-import (
-	"slices"
-)
-
 // KeysMode defines how vault access keys are managed during create and update.
 type KeysMode string
 
@@ -112,16 +108,4 @@ func DiffLists(a, b []string) []string {
 		}
 	}
 	return out
-}
-
-// EqualLists reports whether two string slices contain the same elements, ignoring order.
-func EqualLists(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	a = slices.Clone(a)
-	b = slices.Clone(b)
-	slices.Sort(a)
-	slices.Sort(b)
-	return slices.Equal(a, b)
 }

@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -12,48 +13,50 @@ import (
 type refreshRecorder struct {
 	calls []string
 	wrote struct {
-		keys map[string]any
-		mode item_keys.KeysMode
+		refreshPayload *Payload
+		modeState      *item_keys.KeysModeState
 	}
 }
 
-func (r *refreshRecorder) ops(keysMode item_keys.KeysMode) refreshOps {
+func (r *refreshRecorder) ops() refreshOps {
 	return refreshOps{
-		loadKeysCurrentState: func(*Payload) (*item_keys.VaultItemKeys, error) {
-			r.calls = append(r.calls, "loadKeysCurrentState")
-			return &item_keys.VaultItemKeys{
-				Mode:        keysMode,
-				SearchQuery: "name:testhost*",
-				Keys: map[string]string{
-					"tester": "encrypted secret",
-				},
-			}, nil
-		},
 		loadSharedSecret: func(*Payload) ([]byte, error) {
 			r.calls = append(r.calls, "loadSecret")
 			return []byte("secret"), nil
 		},
-		clientPublicKey: func(string) (chef.AccessKey, error) {
-			r.calls = append(r.calls, "clientKey")
-			return chef.AccessKey{
-				Name:      "tester",
-				PublicKey: "RSA KEY",
-			}, nil
-		},
 		encryptSharedSecret: func(pem string, secret []byte) (string, error) {
 			r.calls = append(r.calls, "encryptSharedSecret")
-			return "encrypted secret", nil
+			return "new encrypted secret", nil
 		},
-		writeKeys: func(_ *Payload, mode item_keys.KeysMode, keys map[string]any, _ *item_keys.VaultItemKeysResult) error {
-			r.calls = append(r.calls, "writeKeys")
-			r.wrote.mode = mode
-			r.wrote.keys = keys
-			return nil
+		getItem: func(_, _ string) (chef.DataBagItem, error) {
+			r.calls = append(r.calls, "getItem")
+			type data chef.DataBagItem
+			var current data
+			rawCurrent := `{
+				"foo": "foo-value-1",
+				"bar": "bar-value-1",
+				"baz": {
+					"fuz": "fuz-value-1",
+					"buz": "buz-value-1"
+				}
+			}`
+			if err := json.Unmarshal([]byte(rawCurrent), &current); err != nil {
+				return nil, err
+			}
+			return current, nil
+		},
+		updateVault: func(payload *Payload, state *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error) {
+			r.calls = append(r.calls, "updateVault")
+			r.wrote.refreshPayload = payload
+			r.wrote.modeState = state
+			return &item_keys.VaultItemKeysResult{
+				URIs: []string{"https://localhost/data/vault1/secret1_keys"},
+			}, nil
 		},
 	}
 }
 
-func TestRefresh_CleanClients(t *testing.T) {
+func TestRefresh_CleanUnknownClients(t *testing.T) {
 	setupStubs(t)
 
 	clients := []string{
@@ -63,7 +66,7 @@ func TestRefresh_CleanClients(t *testing.T) {
 		"testhost4",
 		"testhost5",
 	}
-	kept, removed, err := cleanClients(clients, service.clientExists)
+	kept, removed, err := resolveClients(clients, service.clientExists)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,54 +81,40 @@ func TestRefresh_CleanClients(t *testing.T) {
 	}
 }
 
-func TestRefresh_SparseModeEncryptsPerClient(t *testing.T) {
+func TestRefresh_Reencrypt(t *testing.T) {
 	setupStubs(t)
 
 	rec := refreshRecorder{}
 
-	_, err := service.refresh(&Payload{}, rec.ops(item_keys.KeysModeSparse))
+	_, err := service.refresh(&Payload{
+		VaultName:     "vault1",
+		VaultItemName: "secret1",
+	}, rec.ops())
 	require.NoError(t, err)
 
+	// updateVault kicks off the full workflow to generate a new secret and reencrypt everything
 	require.Equal(t, []string{
-		"loadKeysCurrentState",
-		"loadSecret",
-		"clientKey",
-		"encryptSharedSecret",
-		"clientKey",
-		"encryptSharedSecret",
-		"clientKey",
-		"encryptSharedSecret",
-		"writeKeys",
+		"getItem",
+		"updateVault",
 	}, rec.calls)
-	require.Equal(t, item_keys.KeysModeSparse, rec.wrote.mode)
-	keys := rec.wrote.keys
-	require.Equal(t, "encrypted secret", keys["tester"])
-	require.Equal(t, "encrypted secret", keys["testhost3"])
-	require.Equal(t, "encrypted secret", keys["testhost4"])
 }
 
-func TestRefresh_DefaultKeys(t *testing.T) {
+func TestRefresh_SkipReencrypt(t *testing.T) {
 	setupStubs(t)
 
 	rec := refreshRecorder{}
 
-	_, err := service.refresh(&Payload{}, rec.ops(item_keys.KeysModeDefault))
+	_, err := service.refresh(&Payload{
+		VaultName:     "vault1",
+		VaultItemName: "secret1",
+		SkipReencrypt: true,
+	}, rec.ops())
 	require.NoError(t, err)
 
+	// should only encrypt 2 times, new clients only
 	require.Equal(t, []string{
-		"loadKeysCurrentState",
 		"loadSecret",
-		"clientKey",
 		"encryptSharedSecret",
-		"clientKey",
 		"encryptSharedSecret",
-		"clientKey",
-		"encryptSharedSecret",
-		"writeKeys",
 	}, rec.calls)
-	require.Equal(t, item_keys.KeysModeDefault, rec.wrote.mode)
-	keys := rec.wrote.keys
-	require.Equal(t, "encrypted secret", keys["tester"])
-	require.Equal(t, "encrypted secret", keys["testhost3"])
-	require.Equal(t, "encrypted secret", keys["testhost4"])
 }

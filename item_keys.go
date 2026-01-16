@@ -231,6 +231,20 @@ func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.
 	return nil
 }
 
+// cleanUnknownClients removes non-existent clients and prunes their keys from keyState.
+func (s *Service) cleanUnknownClients(payload *Payload, keyState *item_keys.VaultItemKeys, clients []string) (kept []string, removed []string, err error) {
+	kept, removed, err = resolveClients(clients, s.clientExists)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(removed) != 0 {
+		if err := s.pruneKeys(removed, keyState, payload); err != nil {
+			return nil, nil, err
+		}
+	}
+	return kept, removed, nil
+}
+
 // pruneKeys removes the keys for the requested actors.
 func (s *Service) pruneKeys(actors []string, keyState *item_keys.VaultItemKeys, payload *Payload) error {
 	for _, actor := range actors {
@@ -279,4 +293,38 @@ func (s *Service) deleteSparseKeys(name string, item string, actor interface{}, 
 		out.KeysURIs = append(out.KeysURIs, adminKeyUri)
 	}
 	return nil
+}
+
+// clientExists performs a client lookup to validate the requested client still exists in the Chef Server.
+func (s *Service) clientExists(name string) (bool, error) {
+	_, err := s.Client.Clients.Get(name)
+	if err == nil {
+		return true, nil
+	}
+
+	if cheferr.IsNotFound(err) {
+		return false, nil
+	}
+
+	return false, err
+}
+
+// resolveClients partitions clients into those that still exist on the Chef server and those that do not.
+func resolveClients(clients []string, exists func(string) (bool, error)) (kept []string, removed []string, err error) {
+	kept = clients[:0]
+
+	for _, c := range clients {
+		ok, err := exists(c)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if ok {
+			kept = append(kept, c)
+		} else {
+			removed = append(removed, c)
+		}
+	}
+
+	return kept, removed, nil
 }

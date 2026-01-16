@@ -41,36 +41,3 @@ func TestPayload_ResolveKeysMode_NoChangeWhenOmitted(t *testing.T) {
 		Desired: item_keys.KeysModeSparse,
 	})
 }
-
-func TestPayload_MergeKeyActors_CleanFalse(t *testing.T) {
-	pl := &Payload{
-		VaultName:     "testvault1",
-		VaultItemName: "testsecret1",
-		Admins:        []string{"testadmin2"},
-	}
-	state := &item_keys.VaultItemKeys{
-		Id:      "testsecret1_keys",
-		Admins:  []string{"testadmin1"},
-		Clients: []string{"testclient1", "testclient2"},
-	}
-
-	pl.mergeKeyActors(state)
-	require.Equal(t, pl.Admins, []string{"testadmin1", "testadmin2"})
-}
-
-func TestPayload_MergeKeyActors_CleanTrue(t *testing.T) {
-	pl := &Payload{
-		VaultName:     "testvault1",
-		VaultItemName: "testsecret1",
-		Admins:        []string{"testadmin2"},
-		Clean:         true,
-	}
-	state := &item_keys.VaultItemKeys{
-		Id:      "testsecret1_keys",
-		Admins:  []string{"testadmin1"},
-		Clients: []string{"testclient1", "testclient2"},
-	}
-
-	pl.mergeKeyActors(state)
-	require.Equal(t, pl.Clients, []string(nil))
-}

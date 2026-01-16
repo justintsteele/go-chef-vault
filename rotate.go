@@ -1,18 +1,23 @@
 package vault
 
-// RotateKeys and RotateAllKeys are orchestration methods composed of
-// lower-level primitives that are unit tested elsewhere. These functions
-// intentionally do not have dedicated unit tests; behavior is validated
-// via integration tests.
-
 import (
+	"maps"
+
+	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
+// RotateResponse represents the structure of the response from a RotateKeys operation.
 type RotateResponse struct {
 	Response
 	KeysURIs []string `json:"keys_uris"`
+}
+
+// rotateOps defines the callable operations required to execute a RotateKeys request.
+type rotateOps struct {
+	getItem     func(string, string) (chef.DataBagItem, error)
+	updateVault func(*Payload, *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error)
 }
 
 // RotateKeys rotates the shared secret for a vault item by generating a new secret,
@@ -21,12 +26,30 @@ type RotateResponse struct {
 // References:
 //   - Chef-vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_rotate_keys.rb
 func (s *Service) RotateKeys(payload *Payload) (*RotateResponse, error) {
+	ops := rotateOps{
+		getItem:     s.GetItem,
+		updateVault: s.updateVault,
+	}
+	return s.rotateKeys(payload, ops)
+}
+
+// rotateKeys is the worker called by the public API with the operational methods to complete a RotateKeys request.
+func (s *Service) rotateKeys(payload *Payload, ops rotateOps) (*RotateResponse, error) {
 	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	currentItem, err := s.GetItem(payload.VaultName, payload.VaultItemName)
+	nextState := &item_keys.VaultItemKeys{
+		Id:          keyState.Id,
+		Mode:        keyState.Mode,
+		SearchQuery: keyState.SearchQuery,
+		Admins:      append([]string(nil), keyState.Admins...),
+		Clients:     append([]string(nil), keyState.Clients...),
+		Keys:        maps.Clone(keyState.Keys),
+	}
+
+	currentItem, err := ops.getItem(payload.VaultName, payload.VaultItemName)
 	if err != nil {
 		return nil, err
 	}
@@ -47,13 +70,28 @@ func (s *Service) RotateKeys(payload *Payload) (*RotateResponse, error) {
 		VaultName:     payload.VaultName,
 		VaultItemName: payload.VaultItemName,
 		Content:       currentDbi,
-		Clients:       keyState.Clients,
 		Admins:        keyState.Admins,
 		SearchQuery:   query,
 		KeysMode:      &keyState.Mode,
 	}
 
-	keysResult, err := s.updateVault(rotatePayload, modeState)
+	searchedClients, err := s.getClientsFromSearch(rotatePayload)
+	if err != nil {
+		return nil, err
+	}
+
+	normalizedClients := item_keys.MergeClients(searchedClients, nextState.Clients)
+
+	if payload.Clean {
+		normalizedClients, _, err = s.cleanUnknownClients(payload, nextState, normalizedClients)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rotatePayload.Clients = normalizedClients
+
+	keysResult, err := ops.updateVault(rotatePayload, modeState)
 	if err != nil {
 		return nil, err
 	}

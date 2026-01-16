@@ -16,9 +16,8 @@ type RemoveDataResponse struct {
 
 // removeOps defines the callable operations required to execute an Remove request.
 type removeOps struct {
-	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
-	getItem              func(string, string) (chef.DataBagItem, error)
-	update               func(*Payload) (*UpdateResponse, error)
+	getItem func(string, string) (chef.DataBagItem, error)
+	update  func(*Payload) (*UpdateResponse, error)
 }
 
 // Remove removes clients, admins, or data keys from an existing vault item.
@@ -27,22 +26,24 @@ type removeOps struct {
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_remove.rb
 func (s *Service) Remove(payload *Payload) (*RemoveResponse, error) {
 	ops := removeOps{
-		loadKeysCurrentState: s.loadKeysCurrentState,
-		getItem:              s.GetItem,
-		update:               s.Update,
+		getItem: s.GetItem,
+		update:  s.Update,
 	}
 	return s.remove(payload, ops)
 }
 
-// remove is the worker called by the public API with the operational methods to complete the remove request.
+// remove is the worker called by the public API with the operational methods to complete the Remove request.
 func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, error) {
-	keyState, err := ops.loadKeysCurrentState(payload)
+	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.resolveActors(payload, keyState); err != nil {
-		return nil, err
+	finalPayload := &Payload{
+		VaultName:     payload.VaultName,
+		VaultItemName: payload.VaultItemName,
+		Clients:       keyState.Clients,
+		Admins:        keyState.Admins,
 	}
 
 	removePayload := &Payload{
@@ -53,7 +54,17 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 	}
 
 	if payload.Clean {
-		removePayload.Clean = payload.Clean
+		resolvedClients, unknownClients, err := s.cleanUnknownClients(payload, keyState, keyState.Clients)
+		if err != nil {
+			return nil, err
+		}
+
+		removePayload.Clients = append(removePayload.Clients, unknownClients...)
+		finalPayload.Clients = resolvedClients
+	}
+
+	if err := s.resolveActors(removePayload, keyState); err != nil {
+		return nil, err
 	}
 
 	if payload.Content != nil {
@@ -69,11 +80,11 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 
 		removeContent, ok := pruneData(dbi, payload.Content)
 		if ok {
-			removePayload.Content = removeContent.(map[string]any)
+			finalPayload.Content = removeContent.(map[string]any)
 		}
 	}
 
-	removed, err := ops.update(removePayload)
+	removed, err := ops.update(finalPayload)
 	if err != nil {
 		return nil, err
 	}

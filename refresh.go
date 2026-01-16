@@ -5,7 +5,7 @@ import (
 	"maps"
 
 	"github.com/go-chef/chef"
-	"github.com/justintsteele/go-chef-vault/cheferr"
+	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
@@ -14,11 +14,10 @@ type RefreshResponse = UpdateResponse
 
 // refreshOps defines the callable operations required to execute a Refresh request.
 type refreshOps struct {
-	loadKeysCurrentState func(*Payload) (*item_keys.VaultItemKeys, error)
-	loadSharedSecret     func(*Payload) ([]byte, error)
-	encryptSharedSecret  func(pem string, secret []byte) (string, error)
-	clientPublicKey      func(string) (chef.AccessKey, error)
-	writeKeys            func(*Payload, item_keys.KeysMode, map[string]any, *item_keys.VaultItemKeysResult) error
+	loadSharedSecret    func(*Payload) ([]byte, error)
+	encryptSharedSecret func(pem string, secret []byte) (string, error)
+	getItem             func(string, string) (chef.DataBagItem, error)
+	updateVault         func(*Payload, *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error)
 }
 
 // Refresh reprocesses the vault search query and ensures all matching nodes have an encrypted secret,
@@ -28,11 +27,10 @@ type refreshOps struct {
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_refresh.rb
 func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 	ops := refreshOps{
-		loadKeysCurrentState: s.loadKeysCurrentState,
-		loadSharedSecret:     s.loadSharedSecret,
-		encryptSharedSecret:  item_keys.EncryptSharedSecret,
-		clientPublicKey:      s.clientPublicKey,
-		writeKeys:            s.writeKeys,
+		loadSharedSecret:    s.loadSharedSecret,
+		encryptSharedSecret: item_keys.EncryptSharedSecret,
+		getItem:             s.GetItem,
+		updateVault:         s.updateVault,
 	}
 
 	return s.refresh(payload, ops)
@@ -40,7 +38,7 @@ func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
 
 // refresh is the worker called by the public API with the operational methods to complete the refresh request.
 func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, error) {
-	keyState, err := ops.loadKeysCurrentState(payload)
+	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -71,45 +69,63 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 	}
 
 	normalizedClients := item_keys.MergeClients(searchedClients, nextState.Clients)
-	var removedClients []string
+
+	addedClients := item_keys.DiffLists(normalizedClients, nextState.Clients)
+
 	if payload.Clean {
-		normalizedClients, removedClients, err = cleanClients(normalizedClients, s.clientExists)
+		normalizedClients, _, err = s.cleanUnknownClients(payload, nextState, normalizedClients)
 		if err != nil {
 			return nil, err
 		}
-		if len(removedClients) != 0 {
-			if err := s.pruneKeys(removedClients, nextState, payload); err != nil {
-				return nil, err
-			}
-		}
 	}
 
-	clientsEqual := item_keys.EqualLists(keyState.Clients, normalizedClients)
+	if payload.SkipReencrypt {
+		return s.refreshSkipReencrypt(payload, nextState, addedClients, ops)
+	}
 
-	refreshResponse := &RefreshResponse{
+	nextState.Clients = normalizedClients
+	return s.refreshReencrypt(payload, nextState, ops)
+}
+
+func (s *Service) refreshReencrypt(payload *Payload, keyState *item_keys.VaultItemKeys, ops refreshOps) (*RefreshResponse, error) {
+	currentItem, err := ops.getItem(payload.VaultName, payload.VaultItemName)
+	if err != nil {
+		return nil, err
+	}
+
+	currentDbi, err := item.DataBagItemMap(currentItem)
+	if err != nil {
+		return nil, err
+	}
+
+	payload.Content = currentDbi
+
+	modeState := &item_keys.KeysModeState{
+		Current: keyState.Mode,
+		Desired: keyState.Mode,
+	}
+
+	keysResult, err := ops.updateVault(payload, modeState)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RefreshResponse{
 		Response: Response{
 			URI: s.vaultURL(payload.VaultName),
 		},
-		KeysURIs: []string{},
-	}
+		KeysURIs: keysResult.URIs,
+	}, nil
+}
 
-	// Skip re-encryption when requested and the effective client set is unchanged.
-	if payload.SkipReencrypt && clientsEqual {
-		return refreshResponse, nil
-	}
-
-	currentClients := keyState.Clients
-	desiredClients := normalizedClients
-
-	clientsAdded := item_keys.DiffLists(desiredClients, currentClients)
-
+func (s *Service) refreshSkipReencrypt(payload *Payload, keyState *item_keys.VaultItemKeys, clients []string, ops refreshOps) (*RefreshResponse, error) {
 	sharedSecret, err := ops.loadSharedSecret(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, actor := range clientsAdded {
-		pub, err := ops.clientPublicKey(actor)
+	for _, actor := range clients {
+		pub, err := s.clientPublicKey(actor)
 		if err != nil {
 			return nil, err
 		}
@@ -119,54 +135,18 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 			return nil, err
 		}
 
-		nextState.Keys[actor] = enc
+		keyState.Keys[actor] = enc
 	}
 
-	keys := nextState.BuildKeysItem(normalizedClients)
-
+	keys := keyState.BuildKeysItem(clients)
 	result := &item_keys.VaultItemKeysResult{}
-	if err := ops.writeKeys(payload, nextState.Mode, keys, result); err != nil {
+	if err := s.writeKeys(payload, keyState.Mode, keys, result); err != nil {
 		return nil, err
 	}
-
 	return &RefreshResponse{
 		Response: Response{
 			URI: s.vaultURL(payload.VaultName),
 		},
 		KeysURIs: result.URIs,
 	}, nil
-}
-
-// clientExists performs a client lookup to validate the requested client still exists in the Chef Server.
-func (s *Service) clientExists(name string) (bool, error) {
-	_, err := s.Client.Clients.Get(name)
-	if err == nil {
-		return true, nil
-	}
-
-	if cheferr.IsNotFound(err) {
-		return false, nil
-	}
-
-	return false, err
-}
-
-// cleanClients partitions clients into those that still exist on the Chef server and those that do not.
-func cleanClients(clients []string, exists func(string) (bool, error)) (kept []string, removed []string, err error) {
-	kept = clients[:0]
-
-	for _, c := range clients {
-		ok, err := exists(c)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if ok {
-			kept = append(kept, c)
-		} else {
-			removed = append(removed, c)
-		}
-	}
-
-	return kept, removed, nil
 }

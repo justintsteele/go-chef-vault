@@ -8,7 +8,7 @@ import (
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
-// CreateResponse represents the structure of the response from an Create operation.
+// CreateResponse represents the structure of the response from a Create operation.
 type CreateResponse struct {
 	Response
 	Data     *CreateDataResponse `json:"data"`

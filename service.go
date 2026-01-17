@@ -140,6 +140,7 @@ func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]clien
 	return rows, nil
 }
 
+// loadActorKey retrieves the encrypted shared key for the specified actor.
 func (s *Service) loadActorKey(vaultName, vaultItem string) (string, error) {
 	rawKeys, err := s.Client.DataBags.GetItem(vaultName, vaultItem+"_keys")
 	if err != nil {
@@ -178,6 +179,7 @@ func (s *Service) loadActorKey(vaultName, vaultItem string) (string, error) {
 	return keyStr, nil
 }
 
+// loadSharedSecret decrypts and returns the vault shared secret using the current actor's private key and encrypted shared key.
 func (s *Service) loadSharedSecret(payload *Payload) ([]byte, error) {
 	actorKey, err := s.loadActorKey(payload.VaultName, payload.VaultItemName)
 	if err != nil {

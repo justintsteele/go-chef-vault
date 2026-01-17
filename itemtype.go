@@ -1,11 +1,19 @@
 package vault
 
+// DataBagItemType represents the classification of a Chef data bag item as determined by Chef-Vault semantics.
 type DataBagItemType string
 
 const (
-	DataBagItemTypeVault     DataBagItemType = "vault"
+	// DataBagItemTypeVault indicates the item is a Chef Vault.
+	DataBagItemTypeVault DataBagItemType = "vault"
+
+	// DataBagItemTypeEncrypted indicates the item is an encrypted data bag item containing
+	// encrypted application data.
 	DataBagItemTypeEncrypted DataBagItemType = "encrypted"
-	DataBagItemTypeNormal    DataBagItemType = "normal"
+
+	// DataBagItemTypeNormal indicates the item is a standard Chef data bag item
+	// with no Chef-Vault or encrypted data bag semantics applied.
+	DataBagItemTypeNormal DataBagItemType = "normal"
 )
 
 // ItemType determines whether the data bag item is a vault, encrypted data bag, or a normal data bag item.

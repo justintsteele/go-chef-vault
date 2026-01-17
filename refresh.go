@@ -87,6 +87,8 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 	return s.refreshReencrypt(payload, nextState, ops)
 }
 
+// refreshReencrypt performs a full refresh by re-encrypting the vault using
+// a newly generated shared secret. All existing data and keys are re-written.
 func (s *Service) refreshReencrypt(payload *Payload, keyState *item_keys.VaultItemKeys, ops refreshOps) (*RefreshResponse, error) {
 	currentItem, err := ops.getItem(payload.VaultName, payload.VaultItemName)
 	if err != nil {
@@ -118,6 +120,9 @@ func (s *Service) refreshReencrypt(payload *Payload, keyState *item_keys.VaultIt
 	}, nil
 }
 
+// refreshSkipReencrypt performs a refresh without re-encrypting the vault.
+// New actors are granted access by encrypting the existing shared secret,
+// preserving all existing encrypted data and keys.
 func (s *Service) refreshSkipReencrypt(payload *Payload, keyState *item_keys.VaultItemKeys, clients []string, ops refreshOps) (*RefreshResponse, error) {
 	sharedSecret, err := ops.loadSharedSecret(payload)
 	if err != nil {

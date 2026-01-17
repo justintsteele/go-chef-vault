@@ -6,12 +6,13 @@ import (
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
+// DeleteResponse represents the structure of the response from a Delete operation.
 type DeleteResponse struct {
 	Response
 	KeysURIs []string `json:"keys,omitempty"`
 }
 
-// Delete removes the entire vault, all the items, and keys from the Chef Server (nuclear option).
+// Delete destroys the entire vault, all the items, and keys from the Chef Server (nuclear option).
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
@@ -26,7 +27,7 @@ func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
 	return
 }
 
-// DeleteItem removes a specified item from a vault and its keys.
+// DeleteItem destroys a specified vault item and its keys.
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
@@ -63,7 +64,7 @@ func (s *Service) DeleteItem(name string, item string) (resp *DeleteResponse, er
 	return resp, nil
 }
 
-// deleteVaultItem removes the encrypted databag portion of the vault.
+// deleteVaultItem removes the encrypted data bag portion of the vault.
 func (s *Service) deleteVaultItem(name string, item string) (resp *DeleteResponse, err error) {
 	itemUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item)
 	if err := s.Client.DataBags.DeleteItem(name, item); err != nil {

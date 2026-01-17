@@ -10,6 +10,10 @@ func (i *IntegrationService) deleteVault() (result *vault.DeleteResponse, err er
 		return
 	}
 
+	result, err = i.Service.Delete("go-vault2")
+	if err != nil {
+		return
+	}
 	return
 }
 

@@ -46,6 +46,7 @@ func (s *Service) update(payload *Payload, ops updateOps) (*UpdateResponse, erro
 	}
 
 	keyState.Admins = item_keys.MergeClients(keyState.Admins, payload.Admins)
+	keyState.Clients = item_keys.MergeClients(keyState.Clients, payload.Clients)
 
 	if payload.Clean {
 		if err := s.pruneKeys(keyState.Clients, keyState, payload); err != nil {

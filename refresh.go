@@ -79,6 +79,8 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 		}
 	}
 
+	nextState.Clients = normalizedClients
+
 	if payload.SkipReencrypt {
 		return s.refreshSkipReencrypt(payload, nextState, addedClients, ops)
 	}
@@ -143,7 +145,7 @@ func (s *Service) refreshSkipReencrypt(payload *Payload, keyState *item_keys.Vau
 		keyState.Keys[actor] = enc
 	}
 
-	keys := keyState.BuildKeysItem(clients)
+	keys := keyState.BuildKeysItem(keyState.Clients)
 	result := &item_keys.VaultItemKeysResult{}
 	if err := s.writeKeys(payload, keyState.Mode, keys, result); err != nil {
 		return nil, err

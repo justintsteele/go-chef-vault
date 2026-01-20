@@ -45,10 +45,13 @@ jobs:
         ports:
           - 4545:4545
         options: >-
+          --entrypoint goiardi
           --health-cmd="wget -qO- http://localhost:4545/_status || exit 1"
           --health-interval=5s
           --health-timeout=2s
           --health-retries=12
+        env:
+          GOIARDI_PORT: 4545
 
     steps:
       - uses: actions/checkout@v4
@@ -58,18 +61,6 @@ jobs:
         with:
           go-version: '1.22'
           cache: true
-
-      - name: Wait for goiardi
-        run: |
-          for i in {1..30}; do
-            if curl -fs http://localhost:4545/_status >/dev/null; then
-              echo "goiardi is ready"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "goiardi did not become ready"
-          exit 1
 
       - name: Run integration scenarios
         env:

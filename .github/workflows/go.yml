@@ -41,7 +41,7 @@ jobs:
 
     services:
       goiardi:
-        image: cturcotte/goiardi:latest
+        image: ctdk/goiardi:latest
         ports:
           - 4545:4545
         options: >-

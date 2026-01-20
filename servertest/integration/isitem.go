@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-chef/chef"
+	vault "github.com/justintsteele/go-chef-vault"
 	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
@@ -15,41 +16,45 @@ const (
 	encrDataBagItem string = "encrypted_item1"
 )
 
-func (i *IntegrationService) isVault() (string, error) {
-	// these are just fixtures so we can get real results
-	if err := i.createDataBag(); err != nil {
-		return "", err
-	}
+func isItem() Scenario {
+	return Scenario{
+		Name: "IsVault?",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
 
-	if err := i.createEncryptedDataBag(); err != nil {
-		return "", err
-	}
-
-	bags := map[string]string{
-		vaultName:       vaultItemName,
-		encrDataBagName: encrDataBagItem,
-		dataBagName:     dataBagItemName,
-	}
-
-	for k, v := range bags {
-		vResult, err := i.Service.IsVault(k, v)
-		if err != nil {
-			return "", err
-		}
-
-		if vResult {
-			fmt.Printf("%s/%s is a vault\n", k, v)
-		} else {
-			fmt.Printf("%s/%s is not a vault\n", k, v)
-			itemTypeResult, err := i.Service.ItemType(k, v)
-			if err != nil {
-				return "", err
+			// fixtures: if these fail, scenario can't proceed meaningfully
+			if err := i.createDataBag(); err != nil {
+				sr.assertNoError("Create Data Bag", err)
+				return sr
 			}
-			fmt.Printf("%s/%s is a %s data bag\n", k, v, itemTypeResult)
-		}
+			sr.assertNoError("Create Data Bag", nil)
 
+			if err := i.createEncryptedDataBag(); err != nil {
+				sr.assertNoError("Create Encrypted Data Bag", err)
+				return sr
+			}
+			sr.assertNoError("Create Encrypted Data Bag", nil)
+
+			assertVaultState(sr, i.Service, vaultName, vaultItemName, true, vault.DataBagItemTypeVault)
+			assertVaultState(sr, i.Service, encrDataBagName, encrDataBagItem, false, vault.DataBagItemTypeEncrypted)
+			assertVaultState(sr, i.Service, dataBagName, dataBagItemName, false, vault.DataBagItemTypeNormal)
+
+			return sr
+		},
 	}
-	return "", nil
+}
+
+func assertVaultState(sr *ScenarioResult, svc *vault.Service, bag, item string, wantVault bool, wantType vault.DataBagItemType) {
+	isVault, _ := svc.IsVault(bag, item)
+	var vaultStr string
+	if !wantVault {
+		vaultStr = "not "
+	}
+
+	sr.assertEqual(fmt.Sprintf("%s/%s is %sa vault", bag, item, vaultStr), wantVault, isVault)
+
+	itemType, _ := svc.ItemType(bag, item)
+	sr.assertEqual(fmt.Sprintf("%s/%s is item type [%s]", bag, item, itemType), wantType, itemType)
 }
 
 func (i *IntegrationService) createDataBag() error {
@@ -103,17 +108,13 @@ func (i *IntegrationService) createEncryptedDataBag() error {
 }
 
 func (i *IntegrationService) deleteDataBags() error {
-	_, derr := i.Service.Client.DataBags.Delete(dataBagName)
-	if derr != nil {
-		return derr
+	_, err := i.Service.Client.DataBags.Delete(dataBagName)
+	if err != nil {
+		return err
 	}
-	fmt.Printf("deleted data bag %s\n", dataBagName)
-
-	_, eerr := i.Service.Client.DataBags.Delete(encrDataBagName)
-	if eerr != nil {
-		return eerr
+	_, err = i.Service.Client.DataBags.Delete(encrDataBagName)
+	if err != nil {
+		return err
 	}
-	fmt.Printf("deleted encrypted data bag %s\n", encrDataBagName)
-
 	return nil
 }

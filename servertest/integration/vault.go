@@ -13,10 +13,12 @@ type IntegrationService struct {
 }
 
 const (
-	newNodeName   = "testhost1"
-	fakeNodeName  = "fakehost1"
-	vaultName     = "go-vault1"
-	vaultItemName = "secret1"
+	newNodeName    = "testhost1"
+	fakeNodeName   = "fakehost1"
+	vaultName      = "go-vault1"
+	vaultItemName  = "secret1"
+	vault2Name     = "go-vault2"
+	vault2ItemName = "secret2"
 )
 
 func NewIntegrationService(service *vault.Service) *IntegrationService {
@@ -25,7 +27,13 @@ func NewIntegrationService(service *vault.Service) *IntegrationService {
 	}
 }
 
-func RunVault(cfg Config) error {
+func RunScenarios(cfg Config, reporter ScenarioReporter) (results []*ExecutedScenario, err error) {
+	defer func() {
+		if reporter != nil {
+			reporter.Report(results)
+		}
+	}()
+
 	if cfg.Target == TargetGoiardi {
 		cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiUser)
 		defer func() {
@@ -36,17 +44,21 @@ func RunVault(cfg Config) error {
 			if !cfg.Keep {
 				cfg.Knife = fmt.Sprintf("%s/%s.rb", cfg.WorkDir, goiardiAdminUser)
 
-				runStep("Delete Items", func() (any, error) {
-					return isvc.deleteItem()
-				})
+				deferScenarios := []Scenario{
+					deleteItem(),
+					deleteVault(vaultName, vaultItemName),
+					deleteVault(vault2Name, vault2ItemName),
+				}
 
-				runStep("Delete Vault", func() (any, error) {
-					return isvc.deleteVault()
-				})
+				for _, s := range deferScenarios {
+					result := s.Run(isvc)
+					results = append(results, &ExecutedScenario{
+						Name:   s.Name,
+						Result: result,
+					})
+				}
 
-				runStep("Delete User", func() (any, error) {
-					return isvc.deleteUser()
-				})
+				Must(isvc.deleteUser())
 			}
 		}()
 	}
@@ -69,58 +81,33 @@ func RunVault(cfg Config) error {
 	service := vault.NewService(client)
 	isvc := NewIntegrationService(service)
 
-	runStep("Create Vault", func() (any, error) {
-		return isvc.createVault()
-	})
+	scenarios := []Scenario{
+		createVault(),
+		isItem(),
+		getVault(),
+		getKeys(),
+		updateSparse(),
+		list(),
+		refresh(),
+		rotate(),
+		rotateAll(),
+		remove(),
+		updateDefault(),
+	}
 
-	runStep("Is Vault?", func() (any, error) {
-		return isvc.isVault()
-	})
+	for _, s := range scenarios {
+		result := s.Run(isvc)
+		results = append(results, &ExecutedScenario{
+			Name:   s.Name,
+			Result: result,
+		})
+	}
 
-	runStep("Get Item", func() (any, error) {
-		return isvc.getVault()
-	})
-
-	runStep("Update Item", func() (any, error) {
-		return isvc.updateContent()
-	})
-
-	runStep("Get Item", func() (any, error) {
-		return isvc.getVault()
-	})
-
-	runStep("Get Item Keys", func() (any, error) {
-		return isvc.getKeys()
-	})
-
-	runStep("List Items", func() (any, error) {
-		return isvc.listItems()
-	})
-
-	runStep("List Vaults", func() (any, error) {
-		return isvc.list()
-	})
-
-	runStep("Refresh Vaults", func() (any, error) {
-		return isvc.refresh()
-	})
-
-	runStep("Rotate Keys", func() (any, error) {
-		return isvc.rotate()
-	})
-
-	runStep("Rotate All Keys", func() (any, error) {
-		return isvc.rotateAllKeys()
-	})
-
-	runStep("Remove", func() (any, error) {
-		return isvc.remove()
-	})
-	return nil
+	return results, nil
 }
 
-func runStep[T any](name string, fn func() (T, error)) {
-	res, err := fn()
-	Must(err)
-	report(name, res)
+func Must(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

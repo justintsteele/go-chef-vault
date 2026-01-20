@@ -2,44 +2,44 @@ package integration
 
 import (
 	"encoding/json"
+	"fmt"
 
-	"github.com/justintsteele/go-chef-vault"
+	vault "github.com/justintsteele/go-chef-vault"
 )
 
-func (i *IntegrationService) createVault() (res *vault.CreateResponse, err error) {
-	var raw map[string]interface{}
-	vaultItem := `{"baz": "baz-value-1", "fuz": "fuz-value-2"}`
+func createVault() Scenario {
+	return Scenario{
+		Name: "Create",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
 
-	if err := json.Unmarshal([]byte(vaultItem), &raw); err != nil {
-		panic(err)
+			var raw map[string]interface{}
+			vaultItem := `{"baz": "baz-value-1", "fuz": "fuz-value-2"}`
+			_ = json.Unmarshal([]byte(vaultItem), &raw)
+
+			admins := []string{i.Service.Client.Auth.ClientName}
+
+			pl := &vault.Payload{
+				VaultName:     vaultName,
+				VaultItemName: vaultItemName,
+				Content:       raw,
+				Admins:        admins,
+			}
+
+			_, err := i.Service.Create(pl)
+			sr.assertNoError(fmt.Sprintf("create vault %s", vaultName), err)
+
+			pl2 := &vault.Payload{
+				VaultName:     vault2Name,
+				VaultItemName: vault2ItemName,
+				Content:       raw,
+				Admins:        admins,
+			}
+
+			_, err = i.Service.Create(pl2)
+			sr.assertNoError(fmt.Sprintf("create vault %s", vault2Name), err)
+
+			return sr
+		},
 	}
-
-	var admins []string
-	admins = append(admins, i.Service.Client.Auth.ClientName)
-
-	// purposefully omit KeysMode so we can test behavior of changing the mode later
-	pl := &vault.Payload{
-		VaultName:     vaultName,
-		VaultItemName: vaultItemName,
-		Content:       raw,
-		KeysMode:      nil,
-		SearchQuery:   nil,
-		Admins:        admins,
-		Clients:       []string{},
-	}
-
-	res, _ = i.Service.Create(pl)
-
-	// create a second vault so we can see rotate all keys do more than one vault later
-	pl2 := &vault.Payload{
-		VaultName:     "go-vault2",
-		VaultItemName: "secret2",
-		Content:       raw,
-		Admins:        admins,
-		Clients:       []string{},
-	}
-
-	_, _ = i.Service.Create(pl2)
-
-	return
 }

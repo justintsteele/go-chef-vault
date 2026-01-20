@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"servertest/integration"
 )
 
@@ -20,5 +21,16 @@ func main() {
 		integration.Must(integration.RunGoiardiInit(cfg))
 	}
 
-	integration.Must(integration.RunVault(cfg))
+	reporter := &integration.ConsoleReporter{}
+	results, err := integration.RunScenarios(cfg, reporter)
+	if err != nil {
+		log.Printf("integration run failed: %v", err)
+		os.Exit(1)
+	}
+
+	if integration.AnyFailed(results) {
+		os.Exit(1)
+	}
+
+	os.Exit(0)
 }

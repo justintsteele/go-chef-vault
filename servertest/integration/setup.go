@@ -6,9 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/go-chef/chef"
@@ -169,27 +167,21 @@ func (c *Config) DestroySandbox() error {
 	return nil
 }
 
-type userDeleteResponse struct {
-	URI string `json:"uri"`
-}
-
 func (i *IntegrationService) createClients(name string) error {
 	newNode := chef.NewNode(name)
-	node, err := i.Service.Client.Nodes.Post(newNode)
+	_, err := i.Service.Client.Nodes.Post(newNode)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Created new node: %s\n", node.Uri)
 	newClient := chef.ApiNewClient{
 		Name:       newNode.Name,
 		ClientName: newNode.Name,
 		Validator:  false,
 	}
-	client, err := i.Service.Client.Clients.Create(newClient)
+	_, err = i.Service.Client.Clients.Create(newClient)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Created new client: %s\n", client.Uri)
 
 	return nil
 }
@@ -198,26 +190,19 @@ func (i *IntegrationService) deleteClients(name string) error {
 	if err := i.Service.Client.Nodes.Delete(name); err != nil {
 		return err
 	}
-	fmt.Printf("Deleted node: %s\n", name)
 
 	if err := i.Service.Client.Clients.Delete(name); err != nil {
 		return err
 	}
-	fmt.Printf("Deleted client: %s\n", name)
 	return nil
 }
 
-func (i *IntegrationService) deleteUser() (response *userDeleteResponse, err error) {
-	if dErr := i.Service.Client.Users.Delete(goiardiUser); err != nil {
-		return nil, dErr
+func (i *IntegrationService) deleteUser() error {
+	if err := i.Service.Client.Users.Delete(goiardiUser); err != nil {
+		return err
 	}
 
-	ref := &url.URL{
-		Path: path.Join("users", goiardiUser),
-	}
-
-	response = &userDeleteResponse{URI: i.Service.Client.BaseURL.ResolveReference(ref).String()}
-	return
+	return nil
 }
 
 func createUser(user map[string]any, client *chef.Client, v interface{}) error {

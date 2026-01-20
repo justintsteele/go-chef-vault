@@ -1,33 +1,56 @@
 package integration
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/justintsteele/go-chef-vault"
+	"github.com/justintsteele/go-chef-vault/item"
 )
 
-func (i *IntegrationService) rotate() (result *vault.RotateResponse, err error) {
-	pl := &vault.Payload{
-		VaultName:     vaultName,
-		VaultItemName: vaultItemName,
-		CleanUnknown:  true,
+func rotate() Scenario {
+	return Scenario{
+		Name: "Rotate Keys",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
+
+			pl := &vault.Payload{
+				VaultName:     vaultName,
+				VaultItemName: vaultItemName,
+				CleanUnknown:  true,
+			}
+
+			preUserKey, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_key_"+goiardiUser)
+			preUserDbi, _ := item.DataBagItemMap(preUserKey)
+
+			_, err := i.Service.RotateKeys(pl)
+			sr.assertNoError("rotate keys", err)
+
+			postUserKey, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_key_"+goiardiUser)
+			postUserDbi, _ := item.DataBagItemMap(postUserKey)
+
+			ok := preUserDbi[goiardiUser] != postUserDbi[goiardiUser]
+			sr.assert(fmt.Sprintf("%s key rotated", goiardiUser), ok, errors.New("user key not rotated"))
+
+			_, err = i.Service.GetItem(vaultName, vaultItemName)
+			sr.assertNoError("get vault item", err)
+
+			return sr
+		},
 	}
-
-	result, err = i.Service.RotateKeys(pl)
-	if err != nil {
-		return
-	}
-
-	report("Rotate Keys:", result)
-
-	return
 }
 
-func (i *IntegrationService) rotateAllKeys() (result []vault.RotateResponse, err error) {
-	result, err = i.Service.RotateAllKeys()
-	if err != nil {
-		return
+func rotateAll() Scenario {
+	return Scenario{
+		Name: "Rotate All Keys",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
+
+			result, err := i.Service.RotateAllKeys()
+			sr.assertNoError("rotate all keys", err)
+			sr.assertEqual("number of keys rotated", len(result), 2)
+
+			return sr
+		},
 	}
-
-	report("Rotate All Keys:", result)
-
-	return
 }

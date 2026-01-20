@@ -1,27 +1,44 @@
 package integration
 
 import (
-	"github.com/justintsteele/go-chef-vault"
+	"fmt"
+
+	"github.com/justintsteele/go-chef-vault/cheferr"
 )
 
-func (i *IntegrationService) deleteVault() (result *vault.DeleteResponse, err error) {
-	result, err = i.Service.Delete(vaultName)
-	if err != nil {
-		return
-	}
+func deleteItem() Scenario {
+	return Scenario{
+		Name: "Delete Item",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
 
-	result, err = i.Service.Delete("go-vault2")
-	if err != nil {
-		return
+			vaultItem, err := i.Service.Client.DataBags.ListItems(vaultName)
+			sr.assert(fmt.Sprintf("pre-delete %s exists", vaultItemName), (*vaultItem)[vaultItemName] != "", err)
+
+			_, err = i.Service.DeleteItem(vaultName, vaultItemName)
+			sr.assertNoError(fmt.Sprintf("delete item %s/%s", vaultName, vaultItemName), err)
+
+			postVaultItem, err := i.Service.Client.DataBags.ListItems(vaultName)
+			sr.assert(fmt.Sprintf("post-delete %s does not exist", vaultItemName), (*postVaultItem)[vaultItemName] == "", err)
+
+			return sr
+		},
 	}
-	return
 }
 
-func (i *IntegrationService) deleteItem() (result *vault.DeleteResponse, err error) {
-	result, err = i.Service.DeleteItem(vaultName, vaultItemName)
-	if err != nil {
-		return
-	}
+func deleteVault(name, item string) Scenario {
+	return Scenario{
+		Name: "Delete Vault",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
 
-	return
+			_, err := i.Service.Delete(name)
+			sr.assertNoError(fmt.Sprintf("delete %s", name), err)
+
+			_, err = i.Service.Client.DataBags.GetItem(name, item)
+			sr.assert(fmt.Sprintf("%s does not exist", name), cheferr.IsNotFound(err), fmt.Errorf("%s still exists", name))
+
+			return sr
+		},
+	}
 }

@@ -1,23 +1,20 @@
 package integration
 
-import (
-	"github.com/go-chef/chef"
-)
+func list() Scenario {
+	return Scenario{
+		Name: "List",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
 
-func (i *IntegrationService) list() (result *chef.DataBagListResult, err error) {
-	result, err = i.Service.List()
-	if err != nil {
-		return
+			result, err := i.Service.List()
+			sr.assertNoError("list vaults", err)
+			sr.assertEqual("number of vaults", len(*result), 2)
+
+			res, err := i.Service.ListItems(vaultName)
+			sr.assertNoError("list vault items", err)
+			sr.assertEqual("number of vaults items", len(*res), 1)
+
+			return sr
+		},
 	}
-
-	return
-}
-
-func (i *IntegrationService) listItems() (result *chef.DataBagListResult, err error) {
-	result, err = i.Service.ListItems(vaultName)
-	if err != nil {
-		return
-	}
-
-	return
 }

@@ -3,6 +3,7 @@ package vault
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/justintsteele/go-chef-vault/item_keys"
@@ -62,6 +63,44 @@ func TestResolveSearchQuery_OverwriteWithNew(t *testing.T) {
 
 	if !reflect.DeepEqual(resolvedQuery, payload.SearchQuery) {
 		t.Errorf("payload.SearchQuery = %v, want %v", resolvedQuery, payload.SearchQuery)
+	}
+}
+
+func TestCleanUnknownClients(t *testing.T) {
+	setupStubs(t)
+
+	payload, _ := stubPayload([]string{"tester"}, []string{"testhost", "testhost3", "fakehost"}, nil)
+	keyState := &item_keys.VaultItemKeys{
+		Id:          "secret1_keys",
+		Admins:      []string{"pivotal", "tester"},
+		Clients:     []string{"testhost", "testhost3", "fakehost"},
+		SearchQuery: "name:testhost*",
+		Mode:        item_keys.KeysModeDefault,
+		Keys: map[string]string{
+			"testhost":  "testhost-private-key-b64\n",
+			"pivotal":   "testhost-private-key-b64\n",
+			"tester":    "tester-private-key-b64\n",
+			"testhost3": "testhost3-private-key-b64\n",
+			"fakehost":  "fakehost-private-key-b64\n",
+		},
+	}
+	kept, removed, err := service.cleanUnknownClients(payload, keyState, keyState.Clients)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(kept)
+	slices.Sort(removed)
+	if !slices.Equal(kept, []string{"testhost", "testhost3"}) {
+		t.Fatalf("kept = %v, want %v", kept, []string{"testhost", "testhost3"})
+	}
+	if !slices.Equal(removed, []string{"fakehost"}) {
+		t.Fatalf("removed = %v, want %v", removed, []string{"fakehost"})
+	}
+	if slices.Contains(keyState.Clients, "fakehost") {
+		t.Fatalf("fakehost should have been removed")
+	}
+	if !reflect.DeepEqual(keyState.Clients, kept) {
+		t.Fatalf("keyState.Clients = %v, want %v", keyState.Clients, kept)
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-chef/chef"
+	"github.com/justintsteele/go-chef-vault/item_keys"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,17 +27,11 @@ func (r *removeRecorder) ops() removeOps {
 				"bar": "bar-value-1",
 			}, nil
 		},
-		update: func(payload *Payload) (*UpdateResponse, error) {
+		update: func(payload *Payload, mode *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error) {
 			r.calls = append(r.calls, "update")
 			r.wrote.removePayload = payload
-			return &UpdateResponse{
-				Response: Response{
-					URI: "https://localhost/data/vault1",
-				},
-				Data: &UpdateDataResponse{
-					URI: "https://localhost/data/vault1/secret1",
-				},
-				KeysURIs: []string{"https://localhost/data/vault1/secret1_keys", "https://localhost/data/vault1/secret1_key_tester"},
+			return &item_keys.VaultItemKeysResult{
+				URIs: []string{"https://localhost/data/vault1/secret1_keys", "https://localhost/data/vault1/secret1_key_tester"},
 			}, nil
 		},
 	}

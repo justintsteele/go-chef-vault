@@ -1,13 +1,19 @@
 package vault
 
 import (
+	"fmt"
+
 	"github.com/go-chef/chef"
 	"github.com/justintsteele/go-chef-vault/item"
 	"github.com/justintsteele/go-chef-vault/item_keys"
 )
 
 // RemoveResponse represents the structure of the response from a Remove operation.
-type RemoveResponse = UpdateResponse
+type RemoveResponse struct {
+	Response
+	Data     *RemoveDataResponse `json:"data"`
+	KeysURIs []string            `json:"keys"`
+}
 
 // RemoveDataResponse represents the response returned after removing data from the vault item.
 type RemoveDataResponse struct {
@@ -17,7 +23,7 @@ type RemoveDataResponse struct {
 // removeOps defines the callable operations required to execute an Remove request.
 type removeOps struct {
 	getItem func(string, string) (chef.DataBagItem, error)
-	update  func(*Payload) (*UpdateResponse, error)
+	update  func(*Payload, *item_keys.KeysModeState) (*item_keys.VaultItemKeysResult, error)
 }
 
 // Remove removes clients, admins, or data keys from an existing vault item.
@@ -27,7 +33,7 @@ type removeOps struct {
 func (s *Service) Remove(payload *Payload) (*RemoveResponse, error) {
 	ops := removeOps{
 		getItem: s.GetItem,
-		update:  s.Update,
+		update:  s.updateVault,
 	}
 	return s.remove(payload, ops)
 }
@@ -42,8 +48,7 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 	finalPayload := &Payload{
 		VaultName:     payload.VaultName,
 		VaultItemName: payload.VaultItemName,
-		Clients:       keyState.Clients,
-		Admins:        keyState.Admins,
+		KeysMode:      &keyState.Mode,
 	}
 
 	if payload.CleanUnknown {
@@ -52,12 +57,15 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 			return nil, err
 		}
 
-		finalPayload.Clients = resolvedClients
+		keyState.Clients = resolvedClients
 	}
 
 	if err := s.resolveActors(payload, keyState); err != nil {
 		return nil, err
 	}
+
+	finalPayload.Admins = keyState.Admins
+	finalPayload.Clients = keyState.Clients
 
 	if payload.Content != nil {
 		current, err := ops.getItem(payload.VaultName, payload.VaultItemName)
@@ -76,12 +84,29 @@ func (s *Service) remove(payload *Payload, ops removeOps) (*RemoveResponse, erro
 		}
 	}
 
-	removed, err := ops.update(finalPayload)
+	keysModeState := &item_keys.KeysModeState{
+		Current: keyState.Mode,
+		Desired: keyState.Mode,
+	}
+
+	removed, err := ops.update(finalPayload, keysModeState)
 	if err != nil {
 		return nil, err
 	}
 
-	return removed, nil
+	return &RemoveResponse{
+		Response: Response{
+			URI: s.vaultURL(finalPayload.VaultName),
+		},
+		Data: &RemoveDataResponse{
+			URI: fmt.Sprintf(
+				"%s/%s",
+				s.vaultURL(finalPayload.VaultName),
+				finalPayload.VaultItemName,
+			),
+		},
+		KeysURIs: removed.URIs,
+	}, nil
 }
 
 // resolveActors removes actors and their keys.

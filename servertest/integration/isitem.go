@@ -18,7 +18,7 @@ const (
 
 func isItem() Scenario {
 	return Scenario{
-		Name: "IsVault?",
+		Name: "IsVault",
 		Run: func(i *IntegrationService) *ScenarioResult {
 			sr := &ScenarioResult{}
 

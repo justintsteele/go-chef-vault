@@ -56,10 +56,10 @@ func assertKeyMode(sr *ScenarioResult, svc *vault.Service, vaultName, vaultItemN
 		switch mode {
 		case SparseOnly:
 			sr.assertNoError(fmt.Sprintf("sparse key exists for %s", actor), sparseErr)
-			sr.assert(fmt.Sprintf("no default key for %s", actor), !defaultExists, fmt.Errorf("default key for %s found", actor))
+			sr.assert(fmt.Sprintf("default key does not exist for %s", actor), !defaultExists, fmt.Errorf("unexpected default key present for %s", actor))
 
 		case DefaultOnly:
-			sr.assert(fmt.Sprintf("no sparse key for %s", actor), sparseErr != nil, fmt.Errorf("sparse key for %s found", actor))
+			sr.assert(fmt.Sprintf("sparse key does not exist for %s", actor), sparseErr != nil, fmt.Errorf("unexpected sparse key present for %s", actor))
 			sr.assert(fmt.Sprintf("default key exists for %s", actor), defaultExists, fmt.Errorf("default key for %s missing", actor))
 		}
 	}

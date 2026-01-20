@@ -37,10 +37,6 @@ func (sr *ScenarioResult) passed() bool {
 	return true
 }
 
-func (sr *ScenarioResult) fail(name string, err error) {
-	sr.assert(name, false, err)
-}
-
 func (sr *ScenarioResult) assert(name string, ok bool, err error) {
 	sr.Assertions = append(sr.Assertions, Assertion{
 		Name:   name,
@@ -163,7 +159,6 @@ func (r *ConsoleReporter) Report(results []*ExecutedScenario) {
 				continue
 			}
 
-			failed += 1
 			fmt.Printf("  ✘ %s\n", a.Name)
 
 			if a.Expected != nil || a.Actual != nil {
@@ -174,6 +169,7 @@ func (r *ConsoleReporter) Report(results []*ExecutedScenario) {
 			if a.Error != nil {
 				fmt.Printf("      error: %v\n", a.Error)
 			}
+			failed++
 		}
 	}
 

@@ -7,9 +7,9 @@ import (
 	"github.com/justintsteele/go-chef-vault/item"
 )
 
-func refresh() Scenario {
+func refreshSkipReencrypt() Scenario {
 	return Scenario{
-		Name: "Refresh",
+		Name: "Refresh (Skip Reencrypt)",
 		Run: func(i *IntegrationService) *ScenarioResult {
 			sr := &ScenarioResult{}
 			pl := &vault.Payload{
@@ -49,6 +49,45 @@ func refresh() Scenario {
 
 			_, err = i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_key_testhost10")
 			sr.assertNoError("new client sparse key created", err)
+
+			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "admins")
+			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "clients")
+
+			return sr
+		},
+	}
+}
+
+func refreshReencrypt() Scenario {
+	return Scenario{
+		Name: "Refresh (Reencrypt)",
+		Run: func(i *IntegrationService) *ScenarioResult {
+			sr := &ScenarioResult{}
+			pl := &vault.Payload{
+				VaultName:     vaultName,
+				VaultItemName: vaultItemName,
+			}
+
+			// gather preflight information to check after the refresh.
+			preKeys, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_keys")
+			preKeysDbi, _ := item.DataBagItemMap(preKeys)
+			sr.assertEqual("pre-refresh clients", preKeysDbi["clients"], []string{"fakehost1", "testhost1", "testhost10"})
+
+			preUserKey, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_key_"+newNodeName)
+			preUserDbi, _ := item.DataBagItemMap(preUserKey)
+
+			// perform refresh.
+			_, err := i.Service.Refresh(pl)
+			sr.assertNoError("refresh reencrypt", err)
+
+			// gather post-refresh data.
+			postKeys, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_keys")
+			postKeysDbi, _ := item.DataBagItemMap(postKeys)
+			postUserKey, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_key_"+newNodeName)
+			postUserDbi, _ := item.DataBagItemMap(postUserKey)
+			sr.assertNotEqual(fmt.Sprintf("post-refresh key for %s", newNodeName), postUserDbi[newNodeName], preUserDbi[newNodeName])
+			sr.assertEqual("keys mode unchanged by payload", preKeysDbi["mode"].(string), postKeysDbi["mode"].(string))
+			sr.assertEqual("post-refresh client list", postKeysDbi["clients"], preKeysDbi["clients"])
 
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "admins")
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "clients")

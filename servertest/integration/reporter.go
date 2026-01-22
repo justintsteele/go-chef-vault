@@ -46,17 +46,24 @@ func (sr *ScenarioResult) assert(name string, ok bool, err error) {
 }
 
 func (sr *ScenarioResult) assertEqual(name string, expected, actual any) {
+	sr.assertValue(name, expected, actual, true)
+}
+
+func (sr *ScenarioResult) assertNotEqual(name string, expected, actual any) {
+	sr.assertValue(name, expected, actual, false)
+}
+
+func (sr *ScenarioResult) assertValue(name string, expected, actual any, want bool) {
 	normalizedExpected := normalizeForEquality(expected)
 	normalizedActual := normalizeForEquality(actual)
 
 	passed := reflect.DeepEqual(normalizedExpected, normalizedActual)
 
-	sr.Assertions = append(sr.Assertions, Assertion{
-		Name:     name,
-		Passed:   passed,
-		Expected: expected,
-		Actual:   actual,
-	})
+	if want {
+		sr.assert(name, passed, fmt.Errorf("expected %s == %s", normalizedExpected, normalizedActual))
+	} else {
+		sr.assert(name, !passed, fmt.Errorf("expected %s != %s", normalizedActual, normalizedExpected))
+	}
 }
 
 func (sr *ScenarioResult) assertContains(name string, container any, value string) {

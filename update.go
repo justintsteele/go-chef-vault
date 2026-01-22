@@ -10,8 +10,8 @@ import (
 // UpdateResponse represents the structure of the response from an Update operation.
 type UpdateResponse struct {
 	Response
-	Data     *UpdateDataResponse `json:"data"`
-	KeysURIs []string            `json:"keys_uris"`
+	Data     *UpdateDataResponse `json:"data,omitempty"`
+	KeysURIs []string            `json:"keys_uris,omitempty"`
 }
 
 // UpdateDataResponse represents the response returned after updating vault content.

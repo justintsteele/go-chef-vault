@@ -61,6 +61,7 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 		VaultName:     payload.VaultName,
 		VaultItemName: payload.VaultItemName,
 		SearchQuery:   searchQuery,
+		Admins:        nextState.Admins,
 	}
 
 	searchedClients, err := s.getClientsFromSearch(refreshPayload)
@@ -80,13 +81,14 @@ func (s *Service) refresh(payload *Payload, ops refreshOps) (*RefreshResponse, e
 	}
 
 	nextState.Clients = normalizedClients
+	refreshPayload.Clients = normalizedClients
 
 	if payload.SkipReencrypt {
-		return s.refreshSkipReencrypt(payload, nextState, addedClients, ops)
+		return s.refreshSkipReencrypt(refreshPayload, nextState, addedClients, ops)
 	}
 
 	nextState.Clients = normalizedClients
-	return s.refreshReencrypt(payload, nextState, ops)
+	return s.refreshReencrypt(refreshPayload, nextState, ops)
 }
 
 // refreshReencrypt performs a full refresh by re-encrypting the vault using
@@ -103,6 +105,7 @@ func (s *Service) refreshReencrypt(payload *Payload, keyState *item_keys.VaultIt
 	}
 
 	payload.Content = currentDbi
+	payload.KeysMode = &keyState.Mode
 
 	modeState := &item_keys.KeysModeState{
 		Current: keyState.Mode,

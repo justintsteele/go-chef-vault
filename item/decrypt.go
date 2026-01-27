@@ -17,6 +17,7 @@ func Decrypt(data chef.DataBagItem, key []byte) (chef.DataBagItem, error) {
 	out := make(map[string]interface{})
 	for dbi, val := range itemMap {
 		if dbi == "id" {
+			out[dbi] = val
 			continue
 		}
 

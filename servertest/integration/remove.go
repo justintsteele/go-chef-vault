@@ -47,11 +47,27 @@ func remove() Scenario {
 			postKeysDbi, _ := item.DataBagItemMap(postKeys)
 			sr.assertNotContains(fmt.Sprintf("post-remove clients should not include %s", fakeNodeName), postKeysDbi["clients"], fakeNodeName)
 
+			var rem map[string]interface{}
+			remItem := `{
+"id": "secret1",
+"baz": "baz-value-1", 
+"foo": "foo-value-3",
+"fuz": {
+	  "faz": "faz-value-4",
+	  "boz": "boz-value-6"
+	}
+}`
+			if err := json.Unmarshal([]byte(remItem), &rem); err != nil {
+				sr.assertNoError("unmarshal remove content", err)
+				return sr
+			}
+
 			postData, _ := i.Service.GetItem(vaultName, vaultItemName)
 			postDataDbi, _ := item.DataBagItemMap(postData)
 			postCheck := postDataDbi["fuz"].(map[string]interface{})["buz"]
 			sr.assert("post-check data not found", postCheck == nil, errors.New("post-check data found"))
 
+			sr.assertEqual("full data bag item post remove", postDataDbi, rem)
 			return sr
 		},
 	}

@@ -13,6 +13,10 @@ func Encrypt(vaultItemName string, content map[string]interface{}, secret []byte
 	item["id"] = vaultItemName
 
 	for k, v := range content {
+		if k == "id" {
+			continue
+		}
+
 		plaintext, err := json.Marshal(v)
 		if err != nil {
 			return nil, err

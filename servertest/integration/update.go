@@ -75,6 +75,7 @@ func updateSparse() Scenario {
 			sr.assertNoError("get vaultItem", err)
 
 			dbi, _ := item.DataBagItemMap(db)
+			raw["id"] = vaultItemName
 			sr.assertEqual("updated content", raw, dbi)
 
 			keys, _ := i.Service.Client.DataBags.GetItem(vaultName, vaultItemName+"_keys")

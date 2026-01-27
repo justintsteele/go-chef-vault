@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/justintsteele/go-chef-vault/item"
@@ -18,15 +19,15 @@ func getVault() Scenario {
 			dbi, dbierr := item.DataBagItemMap(res)
 			sr.assertNoError("Data Bag Item Mapped", dbierr)
 
+			var raw map[string]interface{}
+			rawItem := `{"id": "secret1", "baz": "baz-value-1", "fuz": "fuz-value-2"}`
+			if err := json.Unmarshal([]byte(rawItem), &raw); err != nil {
+				sr.assertNoError("Error unmarshalling raw item", err)
+				return sr
+			}
+
 			if dbierr == nil {
-				val, ok := dbi["baz"]
-				if !ok {
-					sr.assert("Decrypted value does not contain key 'baz'", false, fmt.Errorf("key 'baz' not found in decrypted item"))
-				} else if s, ok := val.(string); !ok {
-					sr.assert("Decrypted value type is not a string", false, fmt.Errorf("key 'baz' has type %T, expected string", val))
-				} else {
-					sr.assertEqual("Decrypted value matches expected", s, "baz-value-1")
-				}
+				sr.assertEqual("retrieved content", raw, dbi)
 			}
 
 			return sr

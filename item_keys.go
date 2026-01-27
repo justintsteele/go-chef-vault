@@ -232,7 +232,7 @@ func (s *Service) cleanupCurrentKeys(payload *Payload, keysModeState *item_keys.
 }
 
 // cleanUnknownClients removes non-existent clients and prunes their keys from keyState.
-func (s *Service) cleanUnknownClients(payload *Payload, keyState *item_keys.VaultItemKeys, clients []string) (kept []string, removed []string, err error) {
+func (s *Service) cleanUnknownClients(payload *Payload, keyState *item_keys.VaultItemKeys, clients []string) (kept, removed []string, err error) {
 	kept, removed, err = resolveClients(clients, s.clientExists)
 	if err != nil {
 		return nil, nil, err
@@ -310,7 +310,7 @@ func (s *Service) clientExists(name string) (bool, error) {
 }
 
 // resolveClients partitions clients into those that still exist on the Chef server and those that do not.
-func resolveClients(clients []string, exists func(string) (bool, error)) (kept []string, removed []string, err error) {
+func resolveClients(clients []string, exists func(string) (bool, error)) (kept, removed []string, err error) {
 	kept = clients[:0]
 
 	for _, c := range clients {

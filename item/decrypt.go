@@ -7,9 +7,6 @@ import (
 	"github.com/go-chef/chef"
 )
 
-// DecryptFunc is a function variable used to allow tests to stub encryption behavior.
-var DecryptFunc = chefcrypto.Decrypt
-
 // Decrypt decrypts an encrypted Chef Vault data bag item and returns the plaintext values.
 func Decrypt(data chef.DataBagItem, key []byte) (chef.DataBagItem, error) {
 	itemMap, err := DataBagItemMap(data)
@@ -29,7 +26,7 @@ func Decrypt(data chef.DataBagItem, key []byte) (chef.DataBagItem, error) {
 		}
 
 		var d interface{}
-		if err := DecryptFunc(key, raw, &d); err != nil {
+		if err := chefcrypto.Decrypt(key, raw, &d); err != nil {
 			return nil, err
 		}
 		out[dbi] = d

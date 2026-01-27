@@ -16,15 +16,17 @@ type DeleteResponse struct {
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
-func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
+func (s *Service) Delete(name string) (*DeleteResponse, error) {
 	vaultUri := s.vaultURL(name)
-	_, err = s.Client.DataBags.Delete(name)
-	result = &DeleteResponse{
+	_, err := s.Client.DataBags.Delete(name)
+	if err != nil {
+		return nil, err
+	}
+	return &DeleteResponse{
 		Response: Response{
 			vaultUri,
 		},
-	}
-	return
+	}, nil
 }
 
 // DeleteItem destroys a specified vault item and its keys.
@@ -32,20 +34,20 @@ func (s *Service) Delete(name string) (result *DeleteResponse, err error) {
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_delete.rb
-func (s *Service) DeleteItem(name string, item string) (resp *DeleteResponse, err error) {
+func (s *Service) DeleteItem(name string, item string) (*DeleteResponse, error) {
 	payload := &Payload{
 		VaultName:     name,
 		VaultItemName: item,
 	}
 	keyState, err := s.loadKeysCurrentState(payload)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// the vault item is deleted first, followed by best-effort key cleanup.
-	resp, err = s.deleteVaultItem(name, item)
+	resp, err := s.deleteVaultItem(name, item)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	if keyState.Mode == item_keys.KeysModeSparse {
@@ -65,15 +67,14 @@ func (s *Service) DeleteItem(name string, item string) (resp *DeleteResponse, er
 }
 
 // deleteVaultItem removes the encrypted data bag portion of the vault.
-func (s *Service) deleteVaultItem(name string, item string) (resp *DeleteResponse, err error) {
+func (s *Service) deleteVaultItem(name string, item string) (*DeleteResponse, error) {
 	itemUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item)
 	if err := s.Client.DataBags.DeleteItem(name, item); err != nil {
 		return nil, err
 	}
-	resp = &DeleteResponse{
+	return &DeleteResponse{
 		Response: Response{
 			URI: itemUri,
 		},
-	}
-	return
+	}, nil
 }

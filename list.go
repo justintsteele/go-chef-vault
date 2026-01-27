@@ -38,10 +38,10 @@ func (s *Service) List() (*chef.DataBagListResult, error) {
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#get-25
-func (s *Service) ListItems(name string) (data *chef.DataBagListResult, err error) {
+func (s *Service) ListItems(name string) (*chef.DataBagListResult, error) {
 	dbl, err := s.Client.DataBags.ListItems(name)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	items := chef.DataBagListResult{}

@@ -31,6 +31,10 @@ type createOps struct {
 //   - Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_create.rb
 func (s *Service) Create(payload *Payload) (*CreateResponse, error) {
+	if err := payload.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := createOps{
 		createKeysDataBag: s.createKeysDataBag,
 	}

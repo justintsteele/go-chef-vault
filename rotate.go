@@ -26,6 +26,10 @@ type rotateOps struct {
 // References:
 //   - Chef-vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_rotate_keys.rb
 func (s *Service) RotateKeys(payload *Payload) (*RotateResponse, error) {
+	if err := payload.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := rotateOps{
 		getItem:     s.GetItem,
 		updateVault: s.updateVault,

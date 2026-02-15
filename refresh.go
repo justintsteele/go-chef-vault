@@ -26,6 +26,10 @@ type refreshOps struct {
 // References:
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_refresh.rb
 func (s *Service) Refresh(payload *Payload) (*RefreshResponse, error) {
+	if err := payload.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := refreshOps{
 		loadSharedSecret:    s.loadSharedSecret,
 		encryptSharedSecret: item_keys.EncryptSharedSecret,

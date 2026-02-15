@@ -22,7 +22,16 @@ const (
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#get-24
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_itemtype.rb
 func (s *Service) ItemType(vaultName, vaultItem string) (DataBagItemType, error) {
-	isVault, err := s.bagIsVault(vaultName)
+	pl := &Payload{
+		VaultName:     vaultName,
+		VaultItemName: vaultItem,
+	}
+
+	if err := pl.validatePayload(); err != nil {
+		return "", err
+	}
+
+	isVault, err := s.bagIsVault(pl.VaultName)
 	if err != nil {
 		return "", err
 	}
@@ -31,7 +40,7 @@ func (s *Service) ItemType(vaultName, vaultItem string) (DataBagItemType, error)
 		return DataBagItemTypeVault, nil
 	}
 
-	encrypted, err := s.bagItemIsEncrypted(vaultName, vaultItem)
+	encrypted, err := s.bagItemIsEncrypted(pl.VaultName, pl.VaultItemName)
 	if err != nil {
 		return "", err
 	}

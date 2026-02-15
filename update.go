@@ -31,6 +31,10 @@ type updateOps struct {
 //   - Chef API Docs: https://docs.chef.io/server/api_chef_server/#post-9
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_update.rb
 func (s *Service) Update(payload *Payload) (*UpdateResponse, error) {
+	if err := payload.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := updateOps{
 		resolveUpdateContent: s.resolveUpdateContent,
 		updateVault:          s.updateVault,

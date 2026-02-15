@@ -1,7 +1,15 @@
 package vault
 
 import (
+	"errors"
+
 	"github.com/justintsteele/go-chef-vault/item_keys"
+)
+
+var (
+	ErrNilPayload           = errors.New("vault: payload cannot be nil")
+	ErrMissingVaultName     = errors.New("vault: missing VaultName")
+	ErrMissingVaultItemName = errors.New("vault: missing VaultItemName")
 )
 
 // Payload represents the input parameters used to create, update, or refresh a vault item.
@@ -16,6 +24,22 @@ type Payload struct {
 	Clean         bool
 	CleanUnknown  bool
 	SkipReencrypt bool
+}
+
+// validatePayload ensures that required fields are provided in a given payload.
+func (p *Payload) validatePayload() error {
+	if p == nil {
+		return ErrNilPayload
+	}
+
+	if p.VaultName == "" {
+		return ErrMissingVaultName
+	}
+
+	if p.VaultItemName == "" {
+		return ErrMissingVaultItemName
+	}
+	return nil
 }
 
 // effectiveKeysMode returns the effective keys mode, defaulting when none is specified.

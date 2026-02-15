@@ -7,8 +7,13 @@ import (
 )
 
 var (
-	ErrNilPayload           = errors.New("vault: payload cannot be nil")
-	ErrMissingVaultName     = errors.New("vault: missing VaultName")
+	// ErrNilPayload is returned when a nil *Payload is passed to a public API.
+	ErrNilPayload = errors.New("vault: payload cannot be nil")
+
+	// ErrMissingVaultName is returned when VaultName is empty.
+	ErrMissingVaultName = errors.New("vault: missing VaultName")
+
+	// ErrMissingVaultItemName is returned when VaultItemName is empty.
 	ErrMissingVaultItemName = errors.New("vault: missing VaultItemName")
 )
 

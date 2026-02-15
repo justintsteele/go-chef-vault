@@ -20,16 +20,24 @@ type getOps struct {
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#get-26
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_show.rb
 func (s *Service) GetItem(vaultName, vaultItem string) (chef.DataBagItem, error) {
+	pl := &Payload{
+		VaultName:     vaultName,
+		VaultItemName: vaultItem,
+	}
+
+	if err := pl.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := getOps{
 		deriveAESKey: item_keys.DeriveAESKey,
 		decrypt:      item.Decrypt,
 	}
-	return s.getItem(vaultName, vaultItem, ops)
+	return s.getItem(pl.VaultName, pl.VaultItemName, ops)
 }
 
 // getItem is the worker called by the public API with the operational methods to complete the update request.
 func (s *Service) getItem(vaultName, vaultItem string, ops getOps) (chef.DataBagItem, error) {
-	// i dunno do this first and puke if there's no key right away
 	actorKey, err := s.loadActorKey(vaultName, vaultItem)
 	if err != nil {
 		return nil, err

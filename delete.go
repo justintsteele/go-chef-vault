@@ -17,6 +17,10 @@ type DeleteResponse struct {
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
 func (s *Service) Delete(name string) (*DeleteResponse, error) {
+	if name == "" {
+		return nil, ErrMissingVaultName
+	}
+
 	vaultUri := s.vaultURL(name)
 	_, err := s.Client.DataBags.Delete(name)
 	if err != nil {
@@ -34,18 +38,23 @@ func (s *Service) Delete(name string) (*DeleteResponse, error) {
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_delete.rb
-func (s *Service) DeleteItem(name string, item string) (*DeleteResponse, error) {
-	payload := &Payload{
+func (s *Service) DeleteItem(name, item string) (*DeleteResponse, error) {
+	pl := &Payload{
 		VaultName:     name,
 		VaultItemName: item,
 	}
-	keyState, err := s.loadKeysCurrentState(payload)
+
+	if err := pl.validatePayload(); err != nil {
+		return nil, err
+	}
+
+	keyState, err := s.loadKeysCurrentState(pl)
 	if err != nil {
 		return nil, err
 	}
 
 	// the vault item is deleted first, followed by best-effort key cleanup.
-	resp, err := s.deleteVaultItem(name, item)
+	resp, err := s.deleteVaultItem(pl.VaultName, pl.VaultItemName)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +63,12 @@ func (s *Service) DeleteItem(name string, item string) (*DeleteResponse, error) 
 		actors := make([]string, len(keyState.Admins)+len(keyState.Clients))
 		actors = append(actors, keyState.Admins...)
 		actors = append(actors, keyState.Clients...)
-		if err := s.deleteSparseKeys(name, item, actors, resp); err != nil {
+		if err := s.deleteSparseKeys(pl.VaultName, pl.VaultItemName, actors, resp); err != nil {
 			return nil, err
 		}
 	}
 
-	if err := s.deleteDefaultKeys(name, item, resp); err != nil {
+	if err := s.deleteDefaultKeys(pl.VaultName, pl.VaultItemName, resp); err != nil {
 		return nil, err
 	}
 

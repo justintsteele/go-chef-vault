@@ -31,6 +31,10 @@ type removeOps struct {
 // References:
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_remove.rb
 func (s *Service) Remove(payload *Payload) (*RemoveResponse, error) {
+	if err := payload.validatePayload(); err != nil {
+		return nil, err
+	}
+
 	ops := removeOps{
 		getItem: s.GetItem,
 		update:  s.updateVault,

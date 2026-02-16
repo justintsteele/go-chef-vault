@@ -16,13 +16,13 @@ type DeleteResponse struct {
 //
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-9
-func (s *Service) Delete(name string) (*DeleteResponse, error) {
-	if name == "" {
+func (s *Service) Delete(vaultName string) (*DeleteResponse, error) {
+	if vaultName == "" {
 		return nil, ErrMissingVaultName
 	}
 
-	vaultUri := s.vaultURL(name)
-	_, err := s.Client.DataBags.Delete(name)
+	vaultUri := s.vaultURL(vaultName)
+	_, err := s.Client.DataBags.Delete(vaultName)
 	if err != nil {
 		return nil, err
 	}
@@ -38,10 +38,10 @@ func (s *Service) Delete(name string) (*DeleteResponse, error) {
 // References:
 //   - Chef API Docs: https://docs.chef.io/api_chef_server/#delete-10
 //   - Chef-Vault Source: https://github.com/chef/chef-vault/blob/main/lib/chef/knife/vault_delete.rb
-func (s *Service) DeleteItem(name, item string) (*DeleteResponse, error) {
+func (s *Service) DeleteItem(vaultName, vaultItem string) (*DeleteResponse, error) {
 	pl := &Payload{
-		VaultName:     name,
-		VaultItemName: item,
+		VaultName:     vaultName,
+		VaultItemName: vaultItem,
 	}
 
 	if err := pl.validatePayload(); err != nil {
@@ -76,9 +76,9 @@ func (s *Service) DeleteItem(name, item string) (*DeleteResponse, error) {
 }
 
 // deleteVaultItem removes the encrypted data bag portion of the vault.
-func (s *Service) deleteVaultItem(name string, item string) (*DeleteResponse, error) {
-	itemUri := fmt.Sprintf("%s/%s", s.vaultURL(name), item)
-	if err := s.Client.DataBags.DeleteItem(name, item); err != nil {
+func (s *Service) deleteVaultItem(vaultName, vaultItem string) (*DeleteResponse, error) {
+	itemUri := fmt.Sprintf("%s/%s", s.vaultURL(vaultName), vaultItem)
+	if err := s.Client.DataBags.DeleteItem(vaultName, vaultItem); err != nil {
 		return nil, err
 	}
 	return &DeleteResponse{

@@ -35,9 +35,9 @@ func NewService(client *chef.Client) *Service {
 }
 
 // vaultURL constructs the canonical URL for a vault resource.
-func (s *Service) vaultURL(name string) string {
+func (s *Service) vaultURL(vaultName string) string {
 	ref := &url.URL{
-		Path: path.Join("data", name),
+		Path: path.Join("data", vaultName),
 	}
 
 	return s.Client.BaseURL.ResolveReference(ref).String()

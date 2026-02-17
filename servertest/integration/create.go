@@ -39,6 +39,12 @@ func createVault() Scenario {
 			_, err = i.Service.Create(pl2)
 			sr.assertNoError(fmt.Sprintf("create vault %s", vault2Name), err)
 
+			_, err = i.Service.Create(nil)
+			sr.assertError(fmt.Sprintf("nil payload: %v", err), err)
+
+			_, err = i.Service.Create(&vault.Payload{VaultItemName: "secret4"})
+			sr.assertError(fmt.Sprintf("missing vault name: %v", err), err)
+
 			return sr
 		},
 	}

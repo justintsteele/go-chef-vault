@@ -53,6 +53,9 @@ func refreshSkipReencrypt() Scenario {
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "admins")
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, postKeysDbi, "clients")
 
+			_, err = i.Service.Refresh(nil)
+			sr.assertError(fmt.Sprintf("nil payload: %v", err), err)
+
 			return sr
 		},
 	}

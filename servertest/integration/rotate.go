@@ -35,6 +35,9 @@ func rotate() Scenario {
 			_, err = i.Service.GetItem(vaultName, vaultItemName)
 			sr.assertNoError("get vault item", err)
 
+			_, err = i.Service.RotateKeys(nil)
+			sr.assertError(fmt.Sprintf("nil payload: %v", err), err)
+
 			return sr
 		},
 	}

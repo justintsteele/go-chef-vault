@@ -84,6 +84,9 @@ func updateSparse() Scenario {
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, keysDbi, "clients")
 			assertSparseKeysOnly(sr, i.Service, vaultName, vaultItemName, keysDbi, "admins")
 
+			_, err = i.Service.Update(nil)
+			sr.assertError(fmt.Sprintf("nil payload: %v", err), err)
+
 			return sr
 		},
 	}
@@ -109,6 +112,9 @@ func updateDefault() Scenario {
 
 			assertDefaultKeysOnly(sr, i.Service, vaultName, vaultItemName, keysDbi, "clients")
 			assertDefaultKeysOnly(sr, i.Service, vaultName, vaultItemName, keysDbi, "admins")
+
+			_, err = i.Service.Update(&vault.Payload{VaultItemName: "secret4"})
+			sr.assertError(fmt.Sprintf("missing vault name: %v", err), err)
 
 			return sr
 		},

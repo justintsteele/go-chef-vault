@@ -30,6 +30,9 @@ func getVault() Scenario {
 				sr.assertEqual("retrieved content", raw, dbi)
 			}
 
+			_, err = i.Service.GetItem(vaultName, "")
+			sr.assertError(fmt.Sprintf("empty vault item name: %v", err), err)
+
 			return sr
 		},
 	}

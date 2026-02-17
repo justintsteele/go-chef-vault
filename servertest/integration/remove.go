@@ -68,6 +68,10 @@ func remove() Scenario {
 			sr.assert("post-check data not found", postCheck == nil, errors.New("post-check data found"))
 
 			sr.assertEqual("full data bag item post remove", postDataDbi, rem)
+
+			_, err = i.Service.Remove(nil)
+			sr.assertError(fmt.Sprintf("nil payload: %v", err), err)
+
 			return sr
 		},
 	}

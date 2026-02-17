@@ -39,6 +39,12 @@ func isItem() Scenario {
 			assertVaultState(sr, i.Service, encrDataBagName, encrDataBagItem, false, vault.DataBagItemTypeEncrypted)
 			assertVaultState(sr, i.Service, dataBagName, dataBagItemName, false, vault.DataBagItemTypeNormal)
 
+			_, err := i.Service.IsVault("", "badbagitem")
+			sr.assertError(fmt.Sprintf("empty bag name [IsVault]: %v", err), err)
+
+			_, err = i.Service.ItemType("encdb", "")
+			sr.assertError(fmt.Sprintf("empty bag item name [ItemType]: %v", err), err)
+
 			return sr
 		},
 	}

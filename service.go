@@ -123,21 +123,40 @@ func (s *Service) executeClientSearch(plan *item_keys.ClientSearchPlan) ([]clien
 		return nil, nil
 	}
 
-	result, err := s.Client.Search.PartialExecJSON(plan.Index, plan.Query, plan.Fields)
-	if err != nil {
-		return nil, err
-	}
-
-	rows := make([]clientSearchResult, 0, len(result.Rows))
-	for _, row := range result.Rows {
-		var r clientSearchResult
-		if err := json.Unmarshal(row.Data, &r); err != nil {
+	start := 0
+	var allResults []clientSearchResult
+	for {
+		query, err := s.Client.Search.NewQuery(plan.Index, plan.Query)
+		if err != nil {
 			return nil, err
 		}
-		rows = append(rows, r)
+
+		query.Start = start
+
+		result, err := query.DoPartialJSON(s.Client, plan.Fields)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(result.Rows) == 0 {
+			break
+		}
+
+		for _, row := range result.Rows {
+			var r clientSearchResult
+			if err := json.Unmarshal(row.Data, &r); err != nil {
+				return nil, err
+			}
+			allResults = append(allResults, r)
+		}
+
+		if len(result.Rows) < query.Rows {
+			break
+		}
+		start += query.Rows
 	}
 
-	return rows, nil
+	return allResults, nil
 }
 
 // loadActorKey retrieves the encrypted shared key for the specified actor.
